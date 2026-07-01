@@ -290,19 +290,38 @@ app.get("/api/integrations/status", async (req, res) => {
 // Cloudbeds live rates
 app.get("/api/cloudbeds/rates", async (req, res) => {
   try {
+    const cloudbedsDebug = process.env.CLOUDBEDS_DEBUG === '1';
+    const debugStart = Date.now();
     const { checkin, checkout, guests, promo } = req.query;
 
-    let checkInDate = new Date();
-    let checkOutDate = new Date();
-    checkOutDate.setDate(checkOutDate.getDate() + 1);
+    const parseDateSafe = (value: unknown) => {
+      if (!value || typeof value !== 'string') return null;
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
 
-    if (checkin && typeof checkin === 'string') checkInDate = new Date(checkin);
-    if (checkout && typeof checkout === 'string') checkOutDate = new Date(checkout);
+    let checkInDate = parseDateSafe(checkin) || new Date();
+    let checkOutDate = parseDateSafe(checkout) || new Date(checkInDate);
+    if (checkOutDate <= checkInDate) {
+      checkOutDate = new Date(checkInDate);
+      checkOutDate.setDate(checkOutDate.getDate() + 1);
+    }
 
     const checkInIso = checkInDate.toISOString().split('T')[0];
     const checkOutIso = checkOutDate.toISOString().split('T')[0];
-    const guestsCount = guests ? Math.max(1, parseInt(guests as string, 10)) : 2;
+    const parsedGuests = guests ? parseInt(guests as string, 10) : 2;
+    const guestsCount = Number.isFinite(parsedGuests) ? Math.max(1, parsedGuests) : 2;
     const nights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / 86400000));
+
+    const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs = 12000) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...init, signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
 
     const form = new URLSearchParams({
       checkin: checkInIso,
@@ -320,17 +339,27 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
     const requestHeaders = {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
       'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en-US,en;q=0.9,es;q=0.8',
       'Origin': 'https://us2.cloudbeds.com',
       'Referer': `https://us2.cloudbeds.com/en/reservation/eh45iO/?currency=eur&checkin=${checkInIso}&checkout=${checkOutIso}&guests=${guestsCount}&adults=${guestsCount}`,
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
       'X-Requested-With': 'XMLHttpRequest'
     };
 
-    let cloudbedsRes = await fetch('https://us2.cloudbeds.com/booking/rooms', {
+    let cloudbedsRes = await fetchWithTimeout('https://us2.cloudbeds.com/booking/rooms', {
       method: 'POST',
       headers: requestHeaders,
       body: form.toString()
     });
+
+    if (cloudbedsDebug) {
+      console.info('[CLOUDBEDS_DEBUG] primary request status:', cloudbedsRes.status, {
+        checkIn: checkInIso,
+        checkOut: checkOutIso,
+        guests: guestsCount,
+        hasPromo: !!(promo && typeof promo === 'string' && promo.trim())
+      });
+    }
 
     // Fallback request shape for stricter edge filters.
     if (!cloudbedsRes.ok) {
@@ -341,16 +370,20 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
         lang: 'en',
         widget_property: '206261339807872'
       });
-      cloudbedsRes = await fetch('https://us2.cloudbeds.com/booking/rooms', {
+      cloudbedsRes = await fetchWithTimeout('https://us2.cloudbeds.com/booking/rooms', {
         method: 'POST',
         headers: requestHeaders,
         body: fallbackForm.toString()
       });
+
+      if (cloudbedsDebug) {
+        console.info('[CLOUDBEDS_DEBUG] fallback request status:', cloudbedsRes.status);
+      }
     }
 
     // Session bootstrap fallback for environments where Cloudbeds requires cookies.
     if (cloudbedsRes.status === 401 || cloudbedsRes.status === 403) {
-      const bootstrapRes = await fetch(`https://us2.cloudbeds.com/en/reservation/eh45iO/?currency=eur&checkin=${checkInIso}&checkout=${checkOutIso}&guests=${guestsCount}&adults=${guestsCount}`, {
+      const bootstrapRes = await fetchWithTimeout(`https://us2.cloudbeds.com/en/reservation/eh45iO/?currency=eur&checkin=${checkInIso}&checkout=${checkOutIso}&guests=${guestsCount}&adults=${guestsCount}`, {
         headers: {
           'User-Agent': requestHeaders['User-Agent'],
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
@@ -358,16 +391,21 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
       });
 
       const bootstrapHeaders = bootstrapRes.headers as any;
-      const setCookies: string[] = typeof bootstrapHeaders.getSetCookie === 'function'
+      const fromGetSetCookie: string[] = typeof bootstrapHeaders.getSetCookie === 'function'
         ? bootstrapHeaders.getSetCookie()
         : [];
+      const rawSetCookie = bootstrapRes.headers.get('set-cookie') || '';
+      const fromRawHeader = rawSetCookie
+        ? rawSetCookie.split(/,(?=[^;]+?=)/g)
+        : [];
+      const setCookies = [...fromGetSetCookie, ...fromRawHeader];
       const cookieHeader = setCookies
         .map((cookie) => cookie.split(';')[0])
         .filter(Boolean)
         .join('; ');
 
       if (cookieHeader) {
-        cloudbedsRes = await fetch('https://us2.cloudbeds.com/booking/rooms', {
+        cloudbedsRes = await fetchWithTimeout('https://us2.cloudbeds.com/booking/rooms', {
           method: 'POST',
           headers: {
             ...requestHeaders,
@@ -375,6 +413,12 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
           },
           body: form.toString()
         });
+
+        if (cloudbedsDebug) {
+          console.info('[CLOUDBEDS_DEBUG] cookie bootstrap retry status:', cloudbedsRes.status, {
+            cookieCount: setCookies.length
+          });
+        }
       }
     }
 
@@ -390,11 +434,29 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
       throw new Error('Cloudbeds returned no room types');
     }
 
-    const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, ' ').trim();
+    const normalize = (value: string) => value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     const roomTypes = payload.room_types;
 
+    if (cloudbedsDebug) {
+      const names = roomTypes.map((roomType: any) => String(roomType?.room_type_name || roomType?.room_type_title || 'unknown'));
+      console.info('[CLOUDBEDS_DEBUG] room_types received:', names.length, names);
+    }
+
     const pickRate = (roomType: any) => {
-      const nightly = Number(roomType?.rate_min ?? roomType?.rate_basic ?? roomType?.rate_max ?? 0);
+      const nightly = Number(
+        roomType?.rate_min
+        ?? roomType?.rate_basic
+        ?? roomType?.rate_max
+        ?? roomType?.lowest_rate
+        ?? roomType?.price
+        ?? roomType?.amount
+        ?? 0
+      );
       return Math.max(0, Math.round(nightly));
     };
 
@@ -413,11 +475,31 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
       return scored.length > 0 ? scored[0].roomType : null;
     };
 
-    const matchedPrivateDouble = pickByName(['double', 'private'], 2) || pickByName(['twin', 'private'], 2);
-    const matchedTriple = pickByName(['triple', 'private'], 3) || pickByName(['twin', 'private'], 2) || matchedPrivateDouble;
-    const matchedFamily = pickByName(['family', 'private'], 4) || pickByName(['family'], 4);
-    const matchedSharedDouble = pickByName(['double', 'shared'], 2) || pickByName(['twin', 'shared'], 2);
-    const matchedSharedSingle = pickByName(['single', 'shared'], 1) || pickByName(['twin', 'shared'], 2) || matchedSharedDouble;
+    const matchedPrivateDouble =
+      pickByName(['double', 'private'], 2)
+      || pickByName(['doble', 'privado'], 2)
+      || pickByName(['twin', 'private'], 2);
+    const matchedTriple =
+      pickByName(['triple', 'private'], 3)
+      || pickByName(['triple', 'privado'], 3)
+      || pickByName(['triple'], 3)
+      || matchedPrivateDouble;
+    const matchedFamily =
+      pickByName(['family', 'private'], 4)
+      || pickByName(['familiar', 'privado'], 4)
+      || pickByName(['quadruple'], 4)
+      || pickByName(['cuadruple'], 4);
+    const matchedSharedDouble =
+      pickByName(['double', 'shared'], 2)
+      || pickByName(['doble', 'compartido'], 2)
+      || pickByName(['budget', 'double'], 2)
+      || pickByName(['economica', 'doble'], 2);
+    const matchedSharedSingle =
+      pickByName(['single', 'shared'], 1)
+      || pickByName(['individual', 'compartido'], 1)
+      || pickByName(['budget', 'single'], 1)
+      || pickByName(['economica', 'individual'], 1)
+      || matchedSharedDouble;
 
     const roomNames: Record<string, string> = {
       'doble-privado': 'Doble con Bano Privado',
@@ -454,6 +536,17 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
       'individual-compartido': toResult('individual-compartido', matchedSharedSingle)
     };
 
+    if (cloudbedsDebug) {
+      console.info('[CLOUDBEDS_DEBUG] mapped rates summary:', Object.fromEntries(
+        Object.entries(rates).map(([roomId, data]) => [roomId, {
+          pricePerNight: Number((data as any).pricePerNight || 0),
+          availableCount: Number((data as any).availableCount || 0),
+          available: !!(data as any).available
+        }])
+      ));
+      console.info('[CLOUDBEDS_DEBUG] request completed in ms:', Date.now() - debugStart);
+    }
+
     res.json({
       success: true,
       propertyId: 'eh45iO',
@@ -464,6 +557,9 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
       rates
     });
   } catch (err: any) {
+    if (process.env.CLOUDBEDS_DEBUG === '1') {
+      console.error('[CLOUDBEDS_DEBUG] rates endpoint error:', err?.message || err);
+    }
     res.status(502).json({ success: false, error: "Cloudbeds live rates unavailable" });
   }
 });

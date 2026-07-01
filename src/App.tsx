@@ -538,9 +538,13 @@ export default function App() {
 
     try {
       const url = `/api/cloudbeds/rates?checkin=${encodeURIComponent(checkinVal)}&checkout=${encodeURIComponent(checkoutVal)}&guests=${guestsVal}&promo=${encodeURIComponent(promoVal)}`;
-      const timeoutId = setTimeout(() => controller.abort(), 7000);
-      const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-      clearTimeout(timeoutId);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      let res: Response;
+      try {
+        res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      } finally {
+        clearTimeout(timeoutId);
+      }
       if (!res.ok) throw new Error('Cloudbeds API responded with an error status');
       
       const data = await res.json();
