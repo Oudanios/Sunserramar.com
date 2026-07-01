@@ -174,7 +174,33 @@ async function getMongoDb() {
   }
 }
 
-// Nodemailer helper
+// Send email via Resend HTTP API (primary - works on all cloud providers)
+async function sendViaResend(to: string, subject: string, html: string, replyTo?: string): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: `Sun Serramar <${process.env.SMTP_USER || 'contact@sunserramar.com'}>`,
+        to: [to],
+        subject,
+        html,
+        ...(replyTo ? { reply_to: replyTo } : {})
+      })
+    });
+    const data = await res.json() as any;
+    if (!res.ok) { console.error('[RESEND] Error:', data); return false; }
+    console.log('[RESEND] Email sent, id:', data.id);
+    return true;
+  } catch (err) {
+    console.error('[RESEND] Exception:', err);
+    return false;
+  }
+}
+
+// Nodemailer helper (fallback - may be blocked by cloud providers on SMTP ports)
 async function getMailTransporter() {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
@@ -182,13 +208,39 @@ async function getMailTransporter() {
   if (!host || !user || !pass || user.includes("example")) return null;
   try {
     const { default: nodemailer } = await import("nodemailer");
+    const port = Number(process.env.SMTP_PORT) || 465;
     return nodemailer.createTransport({
       host,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: Number(process.env.SMTP_PORT) === 465,
-      auth: { user, pass }
-    });
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    } as any);
   } catch { return null; }
+}
+
+// Unified send function: tries Resend first, then SMTP
+async function sendEmail(to: string, subject: string, html: string, replyTo?: string): Promise<string> {
+  // 1. Try Resend (HTTP API - most reliable)
+  if (process.env.RESEND_API_KEY) {
+    const ok = await sendViaResend(to, subject, html, replyTo);
+    if (ok) return 'resend-api';
+  }
+  // 2. Fallback: Nodemailer SMTP
+  try {
+    const transporter = await getMailTransporter();
+    if (!transporter) return 'smtp-not-configured';
+    await Promise.race([
+      transporter.sendMail({ from: `"Sun Serramar" <${process.env.SMTP_USER}>`, to, subject, html, replyTo }),
+      new Promise<never>((_, r) => setTimeout(() => r(new Error('SMTP timeout 15s')), 15000))
+    ]);
+    return 'smtp-sent';
+  } catch (err: any) {
+    console.error('[SMTP] Send error:', err.message);
+    return `smtp-error: ${err.message}`;
+  }
 }
 
 // Integrations status
@@ -206,17 +258,30 @@ app.get("/api/integrations/status", async (req, res) => {
   }
 
   let smtpConnected = false;
-  if (smtpUser && !smtpUser.includes("example")) {
+  const smtpConfigured = (!!smtpUser && !smtpUser.includes("example")) || !!process.env.RESEND_API_KEY;
+  if (smtpConfigured) {
     try {
-      const t = await getMailTransporter();
-      if (t) { await t.verify(); smtpConnected = true; }
+      // Quick connectivity check with tight timeout (no SMTP verify to avoid hangs)
+      if (process.env.RESEND_API_KEY) {
+        // Resend is configured - check API key format
+        smtpConnected = process.env.RESEND_API_KEY.startsWith('re_');
+      } else {
+        const t = await getMailTransporter();
+        if (t) {
+          await Promise.race([
+            t.verify(),
+            new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), 8000))
+          ]);
+          smtpConnected = true;
+        }
+      }
     } catch {}
   }
 
   res.json({
     recipientEmail: recipient,
     mongo: { connected: mongoConnected, configured: mongoUri.startsWith("mongodb") },
-    smtp: { connected: smtpConnected, configured: !!smtpUser && !smtpUser.includes("example"), host: process.env.SMTP_HOST || "" },
+    smtp: { connected: smtpConnected, configured: smtpConfigured, host: process.env.RESEND_API_KEY ? 'resend.com' : (process.env.SMTP_HOST || "") },
     cloudbeds: { bookingUrl: "https://us2.cloudbeds.com/en/reservation/eh45iO", propertyId: "eh45iO" },
     domain: "sunserramar.com"
   });
@@ -317,13 +382,7 @@ app.post("/api/bookings/save", async (req, res) => {
 
     let emailStatus = "not-sent";
     try {
-      const transporter = await getMailTransporter();
-      if (transporter) {
-        await transporter.sendMail({
-          from: `"Sun Serramar Direct" <${process.env.SMTP_USER}>`,
-          to: `${booking.guestEmail}, ${recipient}`,
-          subject: `Reserva Confirmada #${booking.id} - Sun Serramar Boutique Hostal`,
-          html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      const html = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
             <h2>Confirmacion de Reserva - Sun Serramar</h2>
             <p>Hola ${booking.guestName},</p>
             <p>Tu reserva <strong>#${booking.id}</strong> ha sido confirmada.</p>
@@ -335,11 +394,9 @@ app.post("/api/bookings/save", async (req, res) => {
             </table>
             <p>Direccion: C. las Flores, 5, 29631 Benalmadena, Malaga</p>
             <p>Tel: +34 952 44 26 04</p>
-          </div>`
-        });
-        emailStatus = "sent";
-      }
-    } catch {}
+          </div>`;
+      emailStatus = await sendEmail(`${booking.guestEmail}, ${recipient}`, `Reserva Confirmada #${booking.id} - Sun Serramar Boutique Hostal`, html);
+    } catch (err: any) { emailStatus = `error: ${err.message}`; }
 
     res.json({ success: true, bookingId: booking.id, database: dbAction, email: emailStatus, recipient });
   } catch (err: any) {
@@ -364,26 +421,25 @@ app.post("/api/contact", async (req, res) => {
     }
   } catch {}
 
+  let emailStatus = 'not-sent';
   try {
-    const transporter = await getMailTransporter();
-    if (transporter) {
-      await transporter.sendMail({
-        from: `"Sun Serramar Web" <${process.env.SMTP_USER}>`,
-        to: recipient, replyTo: email,
-        subject: `Consulta Web: ${subject || "Informacion"} - ${name}`,
-        html: `<div style="font-family:sans-serif;">
-          <h3>Nueva consulta desde sunserramar.com</h3>
+    const html = `<div style="font-family:sans-serif;padding:20px;">
+          <h3 style="color:#0f172a;">Nueva consulta desde sunserramar.com</h3>
           <p><b>Nombre:</b> ${name}</p>
-          <p><b>Email:</b> ${email}</p>
-          <p><b>Telefono:</b> ${phone || "N/A"}</p>
-          <p><b>Asunto:</b> ${subject || "General"}</p>
+          <p><b>Email:</b> <a href="mailto:${email}">${email}</a></p>
+          <p><b>Telefono:</b> ${phone || 'N/A'}</p>
+          <p><b>Asunto:</b> ${subject || 'General'}</p>
+          <hr/>
           <p><b>Mensaje:</b></p><p>${message.replace(/\n/g, '<br>')}</p>
-        </div>`
-      });
-    }
-  } catch {}
+        </div>`;
+    emailStatus = await sendEmail(recipient, `Consulta Web: ${subject || 'Informacion'} - ${name}`, html, email);
+    console.log('[CONTACT] Email result:', emailStatus);
+  } catch (err: any) {
+    console.error('[CONTACT] Email error:', err.message);
+    emailStatus = `error: ${err.message}`;
+  }
 
-  res.json({ success: true, message: "Message received. We will contact you shortly." });
+  res.json({ success: true, message: "Message received. We will contact you shortly.", emailStatus });
 });
 
 // Booking validation
