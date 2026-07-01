@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Menu, 
@@ -53,16 +53,38 @@ import {
   User
 } from 'lucide-react';
 import { ROOMS, REVIEWS, NEARBY_SIGHTS } from './data';
-import { Room, Review, Booking, AnnouncementConfig, CustomPage } from './types';
+import { Room, Review, Booking, AnnouncementConfig, CustomPage, WebsiteSettings } from './types';
 import AIConcierge from './components/AIConcierge';
 import RoomCard from './components/RoomCard';
-import AdminPanel from './components/AdminPanel';
-import ClientDashboard from './components/ClientDashboard';
 import PremiumWelcomeUpgrade from './components/PremiumWelcomeUpgrade';
 import OfficialPhotoGallery from './components/OfficialPhotoGallery';
 import FaqSection from './components/FaqSection';
-import BookingEmailTemplate from './components/BookingEmailTemplate';
 import { LegalAvisoContent, LegalPrivacidadContent, LegalCookiesContent, LegalReservasContent } from './components/LegalContent';
+
+const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
+const ClientDashboard = React.lazy(() => import('./components/ClientDashboard'));
+const BookingEmailTemplate = React.lazy(() => import('./components/BookingEmailTemplate'));
+
+const normalizeAnnouncementConfig = (value: any): AnnouncementConfig => {
+  const allowedStyles: AnnouncementConfig['style'][] = ['alert-yellow', 'alert-blue', 'alert-green', 'alert-red', 'dark'];
+  return {
+    enabled: value?.enabled === true || value?.enabled === 'true',
+    textEs: typeof value?.textEs === 'string' ? value.textEs : '',
+    textEn: typeof value?.textEn === 'string' ? value.textEn : '',
+    style: allowedStyles.includes(value?.style) ? value.style : 'alert-yellow'
+  };
+};
+
+const DEFAULT_WEBSITE_SETTINGS: WebsiteSettings = {
+  phoneMain: '+34952442604',
+  phoneDisplay: '+34 952 44 26 04',
+  whatsapp: '+34683571614',
+  whatsappDisplay: '+34 683 57 16 14',
+  email: 'contact@sunserramar.com',
+  addressLine: 'C. las Flores, 5, 29631 Benalmádena, Málaga',
+  addressShort: 'C. las Flores, 5 · 29631 Benalmádena, Málaga',
+  mapsQuery: 'Hostal+Serramar+Benalmádena+Calle+las+Flores+5'
+};
 
 interface HeroSlide {
   image: string;
@@ -244,6 +266,7 @@ export default function App() {
 
   // Dynamic CMS custom pages list
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
+  const [websiteSettings, setWebsiteSettings] = useState<WebsiteSettings>(DEFAULT_WEBSITE_SETTINGS);
 
   // Booking Modal management
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<Room | null>(null);
@@ -263,6 +286,9 @@ export default function App() {
   const [successViewMode, setSuccessViewMode] = useState<'voucher' | 'email'>('voucher');
   const [cloudbedsSyncStatus, setCloudbedsSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
+  const cloudbedsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cloudbedsAbortRef = useRef<AbortController | null>(null);
+  const cloudbedsCacheRef = useRef<{ key: string; expiresAt: number; rates: any } | null>(null);
 
   // Review Form state
   const [newReviewAuthor, setNewReviewAuthor] = useState('');
@@ -337,7 +363,11 @@ export default function App() {
 
     const savedAnnouncement = localStorage.getItem('serramar_announcement');
     if (savedAnnouncement) {
-      setAnnouncement(JSON.parse(savedAnnouncement));
+      try {
+        setAnnouncement(normalizeAnnouncementConfig(JSON.parse(savedAnnouncement)));
+      } catch {
+        // Keep current defaults when legacy/corrupted payload cannot be parsed
+      }
     }
 
     const savedPages = localStorage.getItem('serramar_pages');
@@ -346,6 +376,16 @@ export default function App() {
       const cleaned = parsed.filter(p => p.id !== 'normas' && p.id !== 'guia');
       setCustomPages(cleaned);
       localStorage.setItem('serramar_pages', JSON.stringify(cleaned));
+    }
+
+    const savedWebsiteSettings = localStorage.getItem('serramar_site_settings');
+    if (savedWebsiteSettings) {
+      try {
+        const parsed = JSON.parse(savedWebsiteSettings);
+        setWebsiteSettings({ ...DEFAULT_WEBSITE_SETTINGS, ...parsed });
+      } catch {
+        setWebsiteSettings(DEFAULT_WEBSITE_SETTINGS);
+      }
     }
 
     const savedHeroSlides = localStorage.getItem('serramar_hero_slides');
@@ -383,56 +423,93 @@ export default function App() {
   // Sync bookings
   const saveBookingsToStorage = (updatedBookings: Booking[]) => {
     setBookings(updatedBookings);
-    localStorage.setItem('serramar_bookings', JSON.stringify(updatedBookings));
+    try {
+      localStorage.setItem('serramar_bookings', JSON.stringify(updatedBookings));
+    } catch (err) {
+      console.error('Failed to persist bookings:', err);
+      showToast(lang === 'es' ? 'No se pudieron guardar las reservas en este navegador.' : 'Could not save bookings in this browser.', 'error');
+    }
   };
 
   // Sync reviews
   const saveReviewsToStorage = (updatedReviews: Review[]) => {
     setReviewsList(updatedReviews);
-    localStorage.setItem('serramar_reviews', JSON.stringify(updatedReviews));
+    try {
+      localStorage.setItem('serramar_reviews', JSON.stringify(updatedReviews));
+    } catch (err) {
+      console.error('Failed to persist reviews:', err);
+      showToast(lang === 'es' ? 'No se pudieron guardar las opiniones en este navegador.' : 'Could not save reviews in this browser.', 'error');
+    }
   };
 
   // Sync rooms
   const saveRoomsToStorage = (updatedRooms: Room[]) => {
     setRoomsList(updatedRooms);
-    localStorage.setItem('serramar_rooms', JSON.stringify(updatedRooms));
+    try {
+      localStorage.setItem('serramar_rooms', JSON.stringify(updatedRooms));
+    } catch (err) {
+      console.error('Failed to persist rooms:', err);
+      showToast(lang === 'es' ? 'No se pudieron guardar las habitaciones en este navegador.' : 'Could not save rooms in this browser.', 'error');
+    }
+  };
+
+  const applyCloudbedsRates = (rates: Record<string, any>) => {
+    const savedRooms = localStorage.getItem('serramar_rooms');
+    const sourceRooms = savedRooms ? JSON.parse(savedRooms) : ROOMS;
+    const updatedRooms = (sourceRooms as Room[]).map(room => {
+      const synced = rates[room.id];
+      if (synced) {
+        return {
+          ...room,
+          price: synced.pricePerNight,
+          available: synced.available,
+          isLowInventory: synced.isLowInventory,
+          availableCount: synced.availableCount
+        };
+      }
+      return room;
+    });
+    setRoomsList(updatedRooms);
   };
 
   // Synchronize dynamic prices & availability in real-time with Cloudbeds PMS for eh45iO
-  const syncCloudbedsRates = async (inDate?: string, outDate?: string, gst?: number, prm?: string) => {
-    setCloudbedsSyncStatus('syncing');
-    try {
-      const checkinVal = inDate || '';
-      const checkoutVal = outDate || '';
-      const guestsVal = gst || 2;
-      const promoVal = prm !== undefined ? prm : '';
+  const syncCloudbedsRates = async (inDate?: string, outDate?: string, gst?: number, prm?: string, force = false) => {
+    const checkinVal = inDate || '';
+    const checkoutVal = outDate || '';
+    const guestsVal = gst || 2;
+    const promoVal = prm !== undefined ? prm : '';
+    const queryKey = `${checkinVal}|${checkoutVal}|${guestsVal}|${promoVal}`;
 
+    // Reuse recent results to avoid repeated network spikes and slow first interactions.
+    if (!force && cloudbedsCacheRef.current && cloudbedsCacheRef.current.key === queryKey && Date.now() < cloudbedsCacheRef.current.expiresAt) {
+      applyCloudbedsRates(cloudbedsCacheRef.current.rates);
+      setCloudbedsSyncStatus('success');
+      return;
+    }
+
+    if (cloudbedsAbortRef.current) {
+      cloudbedsAbortRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    cloudbedsAbortRef.current = controller;
+    setCloudbedsSyncStatus('syncing');
+
+    try {
       const url = `/api/cloudbeds/rates?checkin=${encodeURIComponent(checkinVal)}&checkout=${encodeURIComponent(checkoutVal)}&guests=${guestsVal}&promo=${encodeURIComponent(promoVal)}`;
-      const res = await fetch(url);
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
+      const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error('Cloudbeds API responded with an error status');
       
       const data = await res.json();
       if (data.success && data.rates) {
-        // We read from the local original list to not lose description or assets
-        const savedRooms = localStorage.getItem('serramar_rooms');
-        const sourceRooms = savedRooms ? JSON.parse(savedRooms) : ROOMS;
-
-        // Update with the synchronized dynamic prices and availability
-        const updatedRooms = (sourceRooms as Room[]).map(room => {
-          const synced = data.rates[room.id];
-          if (synced) {
-            return {
-              ...room,
-              price: synced.pricePerNight,
-              available: synced.available,
-              isLowInventory: synced.isLowInventory,
-              availableCount: synced.availableCount
-            };
-          }
-          return room;
-        });
-        
-        setRoomsList(updatedRooms);
+        applyCloudbedsRates(data.rates);
+        cloudbedsCacheRef.current = {
+          key: queryKey,
+          rates: data.rates,
+          expiresAt: Date.now() + 90_000
+        };
         setCloudbedsSyncStatus('success');
         setLastSyncTime(new Date().toLocaleTimeString());
         console.log(`[CLOUDBEDS LIVE SYNC] Successfully loaded rates from property eh45iO:`, data.rates);
@@ -440,47 +517,112 @@ export default function App() {
         throw new Error('Invalid Cloudbeds sync data format');
       }
     } catch (err) {
+      if (controller.signal.aborted) {
+        return;
+      }
       console.error('[CLOUDBEDS SYNC ERROR] Failed fetching rates, retaining default database rates:', err);
       setCloudbedsSyncStatus('error');
+    } finally {
+      if (cloudbedsAbortRef.current === controller) {
+        cloudbedsAbortRef.current = null;
+      }
     }
   };
 
-  // Auto-sync rates with Cloudbeds PMS instantly on load, date search, or booking modal parameter changes
+  // Auto-sync Cloudbeds only when rates are relevant (rooms tab or booking drawer).
   useEffect(() => {
+    const shouldSyncCloudbeds = activeTab === 'habitaciones' || !!selectedRoomForBooking;
+    if (!shouldSyncCloudbeds) return;
+
     const effectiveIn = checkIn || quickCheckIn || '';
     const effectiveOut = checkOut || quickCheckOut || '';
     const effectiveGuests = checkIn ? guestsCount : (quickGuests || 2);
     const effectivePromo = checkIn ? promoCode : (quickPromoCode || '');
 
-    syncCloudbedsRates(effectiveIn, effectiveOut, effectiveGuests, effectivePromo);
-  }, [checkIn, checkOut, guestsCount, promoCode, quickCheckIn, quickCheckOut, quickGuests, quickPromoCode]);
+    if (cloudbedsDebounceRef.current) {
+      clearTimeout(cloudbedsDebounceRef.current);
+    }
+    cloudbedsDebounceRef.current = setTimeout(() => {
+      syncCloudbedsRates(effectiveIn, effectiveOut, effectiveGuests, effectivePromo);
+    }, 450);
+
+    return () => {
+      if (cloudbedsDebounceRef.current) {
+        clearTimeout(cloudbedsDebounceRef.current);
+      }
+    };
+  }, [activeTab, selectedRoomForBooking, checkIn, checkOut, guestsCount, promoCode, quickCheckIn, quickCheckOut, quickGuests, quickPromoCode]);
+
+  useEffect(() => {
+    return () => {
+      if (cloudbedsDebounceRef.current) clearTimeout(cloudbedsDebounceRef.current);
+      if (cloudbedsAbortRef.current) cloudbedsAbortRef.current.abort();
+    };
+  }, []);
 
   // Sync announcements
   const saveAnnouncementToStorage = (updatedAnnouncement: AnnouncementConfig) => {
-    setAnnouncement(updatedAnnouncement);
-    localStorage.setItem('serramar_announcement', JSON.stringify(updatedAnnouncement));
+    const normalized = normalizeAnnouncementConfig(updatedAnnouncement);
+    setAnnouncement(normalized);
+    try {
+      localStorage.setItem('serramar_announcement', JSON.stringify(normalized));
+    } catch (err) {
+      console.error('Failed to persist announcement:', err);
+      showToast(lang === 'es' ? 'No se pudo guardar la barra de anuncios.' : 'Could not save the announcement bar.', 'error');
+    }
   };
 
   // Sync pages
   const savePagesToStorage = (updatedPages: CustomPage[]) => {
     setCustomPages(updatedPages);
-    localStorage.setItem('serramar_pages', JSON.stringify(updatedPages));
+    try {
+      localStorage.setItem('serramar_pages', JSON.stringify(updatedPages));
+    } catch (err) {
+      console.error('Failed to persist custom pages:', err);
+      showToast(lang === 'es' ? 'No se pudieron guardar las páginas personalizadas.' : 'Could not save custom pages.', 'error');
+    }
+  };
+
+  const saveWebsiteSettingsToStorage = (updatedSettings: WebsiteSettings) => {
+    const normalized = { ...DEFAULT_WEBSITE_SETTINGS, ...updatedSettings };
+    setWebsiteSettings(normalized);
+    try {
+      localStorage.setItem('serramar_site_settings', JSON.stringify(normalized));
+    } catch (err) {
+      console.error('Failed to persist website settings:', err);
+      showToast(lang === 'es' ? 'No se pudo guardar la configuración global del sitio.' : 'Could not save global website settings.', 'error');
+    }
   };
 
   // Sync dynamic media
   const saveHeroSlidesToStorage = (updatedSlides: any[]) => {
     setHeroSlides(updatedSlides);
-    localStorage.setItem('serramar_hero_slides', JSON.stringify(updatedSlides));
+    try {
+      localStorage.setItem('serramar_hero_slides', JSON.stringify(updatedSlides));
+    } catch (err) {
+      console.error('Failed to persist hero slides:', err);
+      showToast(lang === 'es' ? 'No se pudieron guardar las diapositivas. Usa enlaces de imagen para reducir tamaño.' : 'Could not save hero slides. Use image URLs to reduce storage size.', 'error');
+    }
   };
 
   const saveWelcomeImageToStorage = (url: string) => {
     setWelcomeImage(url);
-    localStorage.setItem('serramar_welcome_image', url);
+    try {
+      localStorage.setItem('serramar_welcome_image', url);
+    } catch (err) {
+      console.error('Failed to persist welcome image:', err);
+      showToast(lang === 'es' ? 'No se pudo guardar la imagen de portada. Usa URL externa para evitar límites.' : 'Could not save cover image. Use an external URL to avoid browser limits.', 'error');
+    }
   };
 
   const saveUpgradeImagesToStorage = (updatedImages: string[]) => {
     setUpgradeImages(updatedImages);
-    localStorage.setItem('serramar_upgrade_images', JSON.stringify(updatedImages));
+    try {
+      localStorage.setItem('serramar_upgrade_images', JSON.stringify(updatedImages));
+    } catch (err) {
+      console.error('Failed to persist upgrade images:', err);
+      showToast(lang === 'es' ? 'No se pudieron guardar las imágenes de galería. Usa enlaces externos para imágenes pesadas.' : 'Could not save gallery images. Use external URLs for heavy images.', 'error');
+    }
   };
 
   // Handle direct contact post
@@ -908,6 +1050,17 @@ export default function App() {
     }
   };
 
+  const phoneTelHref = `tel:${websiteSettings.phoneMain.replace(/\s+/g, '')}`;
+  const whatsappDigits = websiteSettings.whatsapp.replace(/[^\d]/g, '');
+  const whatsappUrl = `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(
+    t(
+      '¡Hola! Me gustaría reservar con vosotros. ¿Tenéis ofertas especiales hoy?',
+      'Hello! I would like to book a stay with you. Do you have any special deals?',
+      'Bonjour! Je souhaite réserver un séjour chez vous. Avez-vous des offres spéciales aujourd\'hui?',
+      'مرحباً! أود حجز إقامة معكم. هل لديكم أي عروض خاصة اليوم؟'
+    )
+  )}`;
+
   return (
     <div 
       className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-sky-500 selection:text-white text-slate-800 pb-16 lg:pb-0 relative"
@@ -927,7 +1080,7 @@ export default function App() {
         </div>
       )}
       
-      {announcement.enabled && (
+      {announcement.enabled === true && (
         <div className={`py-2 px-4 text-center text-[11px] font-bold leading-normal relative select-none md:tracking-wide w-full flex items-center justify-center gap-1.5 shadow-sm transition ${getBannerStyle()}`} id="system-promo-announcement">
           <BadgeAlert className="h-4 w-4 shrink-0 animate-bounce" />
           <span>
@@ -945,31 +1098,24 @@ export default function App() {
       {/* Upper Direct Info & Language Flag Bar */}
       <div className="bg-slate-950 border-b border-slate-800 text-slate-300 text-xs py-2.5 px-4 sm:px-8 flex flex-wrap justify-between items-center gap-2">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          <a href="tel:+34952442604" className="flex items-center gap-1.5 hover:text-white transition">
+          <a href={phoneTelHref} className="flex items-center gap-1.5 hover:text-white transition">
             <Phone className="h-3.5 w-3.5 text-amber-400" />
-            +34 952 44 26 04
+            {websiteSettings.phoneDisplay}
           </a>
           <span className="hidden sm:inline text-slate-700">|</span>
           <span className="flex items-center gap-1.5 text-slate-300">
             <MapPin className="h-3.5 w-3.5 text-amber-400" />
-            C. las Flores, 5, 29631 Benalmádena, Málaga
+            {websiteSettings.addressLine}
           </span>
           <span className="hidden md:inline text-slate-700">|</span>
           <a 
-            href={`https://wa.me/34683571614?text=${encodeURIComponent(
-              t(
-                '¡Hola! Me gustaría reservar con vosotros. ¿Tenéis ofertas especiales hoy?',
-                'Hello! I would like to book a stay with you. Do you have any special deals?',
-                'Bonjour! Je souhaite réserver un séjour chez vous. Avez-vous des offres spéciales aujourd\'hui?',
-                'مرحباً! أود حجز إقامة معكم. هل لديكم أي عروض خاصة اليوم؟'
-              )
-            )}`}
+            href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 transition font-bold"
           >
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>💬 {t('WhatsApp Directo: +34 683 571 614', 'Book on WhatsApp: +34 683 571 614', 'WhatsApp Direct: +34 683 571 614', 'واتساب المباشر: +34 683 571 614')}</span>
+            <span>💬 {t(`WhatsApp Directo: ${websiteSettings.whatsappDisplay}`, `Book on WhatsApp: ${websiteSettings.whatsappDisplay}`, `WhatsApp Direct: ${websiteSettings.whatsappDisplay}`, `واتساب المباشر: ${websiteSettings.whatsappDisplay}`)}</span>
           </a>
         </div>
         
@@ -2080,7 +2226,7 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => syncCloudbedsRates(checkIn || quickCheckIn, checkOut || quickCheckOut, checkIn ? guestsCount : quickGuests, checkIn ? promoCode : quickPromoCode)}
+                  onClick={() => syncCloudbedsRates(checkIn || quickCheckIn, checkOut || quickCheckOut, checkIn ? guestsCount : quickGuests, checkIn ? promoCode : quickPromoCode, true)}
                   disabled={cloudbedsSyncStatus === 'syncing'}
                   className="bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700/60 hover:border-slate-600 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider font-mono transition active:scale-95 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                 >
@@ -2287,22 +2433,24 @@ export default function App() {
                           </div>
                         ) : (
                           <div className="animate-in fade-in duration-300">
-                            <BookingEmailTemplate 
-                              lang={lang} 
-                              booking={bookings[bookings.length - 1] || {
-                                id: 'SRRMR-9426',
-                                guestName: guestName || 'Valued Guest',
-                                guestEmail: guestEmail || 'mail@example.com',
-                                guestPhone: guestPhone || '+34 600 000 000',
-                                roomName: getRoomName(selectedRoomForBooking),
-                                checkIn: checkIn,
-                                checkOut: checkOut,
-                                totalPrice: bookings[bookings.length - 1]?.totalPrice || 180,
-                                breakfastOption: breakfastOption,
-                                guestsCount: guestsCount,
-                                roomId: selectedRoomForBooking?.id || '1'
-                              }}
-                            />
+                            <Suspense fallback={<div className="text-slate-300 text-xs">Loading email preview...</div>}>
+                              <BookingEmailTemplate 
+                                lang={lang} 
+                                booking={bookings[bookings.length - 1] || {
+                                  id: 'SRRMR-9426',
+                                  guestName: guestName || 'Valued Guest',
+                                  guestEmail: guestEmail || 'mail@example.com',
+                                  guestPhone: guestPhone || '+34 600 000 000',
+                                  roomName: getRoomName(selectedRoomForBooking),
+                                  checkIn: checkIn,
+                                  checkOut: checkOut,
+                                  totalPrice: bookings[bookings.length - 1]?.totalPrice || 180,
+                                  breakfastOption: breakfastOption,
+                                  guestsCount: guestsCount,
+                                  roomId: selectedRoomForBooking?.id || '1'
+                                }}
+                              />
+                            </Suspense>
                           </div>
                         )}
 
@@ -4218,12 +4366,12 @@ export default function App() {
                     <div className="space-y-1.5">
                       <p className="text-[10px] uppercase tracking-wider font-mono text-slate-400 font-bold">{lang === 'es' ? 'Número Directo (Fijo / Whatsapp):' : 'Hotline (Phone / WhatsApp):'}</p>
                       <a 
-                        href="tel:+34952442604" 
+                        href={phoneTelHref}
                         className="flex items-center gap-3 bg-slate-800/60 p-3 rounded-xl border border-slate-750 hover:bg-slate-800 hover:border-slate-700 transition"
                       >
                         <Phone className="h-5 w-5 text-amber-500 shrink-0" />
                         <div>
-                          <strong className="block text-white text-sm font-extrabold">+34 952 44 26 04</strong>
+                          <strong className="block text-white text-sm font-extrabold">{websiteSettings.phoneDisplay}</strong>
                           <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
                             {lang === 'es' ? 'Atención telefónica de 09:00 a 22:30' : 'Phone operations daily 09:00 to 22:30'}
                           </span>
@@ -4237,7 +4385,7 @@ export default function App() {
                         {lang === 'es' ? 'Canal de WhatsApp Oficial (Chat Directo):' : 'Official WhatsApp Channel (Direct Chat):'}
                       </p>
                       <a 
-                        href="https://wa.me/34683571614?text=Hola%20Hostal%20Serramar" 
+                        href={whatsappUrl}
                         target="_blank" 
                         rel="noopener noreferrer" 
                         className="flex items-center gap-3 bg-emerald-950/40 border border-emerald-900/60 p-3 rounded-xl hover:bg-emerald-950/60 hover:border-emerald-850 transition"
@@ -4248,7 +4396,7 @@ export default function App() {
                             {lang === 'es' ? 'Abrir Chat de WhatsApp' : 'Open WhatsApp Chat'}
                           </strong>
                           <span className="text-[10px] text-emerald-400/80 font-medium block mt-0.5">
-                            +34 683 57 16 14 • {lang === 'es' ? 'Respuesta inmediata' : 'Instant responses'}
+                            {websiteSettings.whatsappDisplay} • {lang === 'es' ? 'Respuesta inmediata' : 'Instant responses'}
                           </span>
                         </div>
                       </a>
@@ -4260,13 +4408,13 @@ export default function App() {
                       <div 
                         className="flex items-center gap-3 bg-slate-800/60 p-3 rounded-xl border border-slate-750 hover:bg-slate-800 hover:border-slate-700 transition cursor-pointer"
                         onClick={() => {
-                          navigator.clipboard.writeText('contact@sunserramar.com');
+                          navigator.clipboard.writeText(websiteSettings.email);
                           showToast(lang === 'es' ? '¡Email copiado al portapapeles!' : 'Email copied to clipboard!', 'success');
                         }}
                       >
                         <Mail className="h-5 w-5 text-sky-400 shrink-0" />
                         <div>
-                          <strong className="block text-white text-sm font-extrabold">contact@sunserramar.com</strong>
+                          <strong className="block text-white text-sm font-extrabold">{websiteSettings.email}</strong>
                           <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
                             {lang === 'es' ? 'Haz clic para copiar • Respuestas en <2 horas' : 'Click to copy • Response usually <2 hours'}
                           </span>
@@ -4278,16 +4426,16 @@ export default function App() {
                     <div className="space-y-1.5">
                       <p className="text-[10px] uppercase tracking-wider font-mono text-slate-400 font-bold">{lang === 'es' ? 'Dirección Física:' : 'Street Address:'}</p>
                       <a 
-                        href="https://maps.google.com/?q=Hostal+Serramar+Benalmádena+Calle+las+Flores+5" 
+                        href={`https://maps.google.com/?q=${websiteSettings.mapsQuery}`}
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-slate-800/60 p-3 rounded-xl border border-slate-750 hover:bg-slate-800 hover:border-slate-700 transition"
                       >
                         <MapPin className="h-5 w-5 text-emerald-400 shrink-0" />
                         <div>
-                          <strong className="block text-white text-sm font-extrabold">Calle las Flores, 5</strong>
+                          <strong className="block text-white text-sm font-extrabold">{websiteSettings.addressLine.split(',')[0]}</strong>
                           <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                            29631 Benalmádena, Málaga, España
+                            {websiteSettings.addressLine.split(',').slice(1).join(',').trim()}
                           </span>
                         </div>
                       </a>
@@ -4624,47 +4772,53 @@ export default function App() {
         {/* 8. ADMIN CONTROL BOARD SECTION */}
         {activeTab === 'panel-admin' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10">
-            <AdminPanel
-              lang={lang}
-              rooms={roomsList}
-              bookings={bookings}
-              reviews={reviewsList}
-              announcement={announcement}
-              customPages={customPages}
-              heroSlides={slidesToUse}
-              welcomeImage={welcomeImage}
-              upgradeImages={upgradeImages}
-              onUpdateRooms={saveRoomsToStorage}
-              onUpdateBookings={saveBookingsToStorage}
-              onUpdateReviews={saveReviewsToStorage}
-              onUpdateAnnouncement={saveAnnouncementToStorage}
-              onUpdatePages={savePagesToStorage}
-              onUpdateHeroSlides={saveHeroSlidesToStorage}
-              onUpdateWelcomeImage={saveWelcomeImageToStorage}
-              onUpdateUpgradeImages={saveUpgradeImagesToStorage}
-              onClose={() => setActiveTab('inicio')}
-              showToast={showToast}
-            />
+            <Suspense fallback={<div className="text-slate-500 text-sm">Loading admin panel...</div>}>
+              <AdminPanel
+                lang={lang}
+                rooms={roomsList}
+                bookings={bookings}
+                reviews={reviewsList}
+                announcement={announcement}
+                customPages={customPages}
+                websiteSettings={websiteSettings}
+                heroSlides={slidesToUse}
+                welcomeImage={welcomeImage}
+                upgradeImages={upgradeImages}
+                onUpdateRooms={saveRoomsToStorage}
+                onUpdateBookings={saveBookingsToStorage}
+                onUpdateReviews={saveReviewsToStorage}
+                onUpdateAnnouncement={saveAnnouncementToStorage}
+                onUpdatePages={savePagesToStorage}
+                onUpdateWebsiteSettings={saveWebsiteSettingsToStorage}
+                onUpdateHeroSlides={saveHeroSlidesToStorage}
+                onUpdateWelcomeImage={saveWelcomeImageToStorage}
+                onUpdateUpgradeImages={saveUpgradeImagesToStorage}
+                onClose={() => setActiveTab('inicio')}
+                showToast={showToast}
+              />
+            </Suspense>
           </div>
         )}
 
         {/* 9. CLIENT PORTAL PANEL SECTION */}
         {activeTab === 'panel-cliente' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10">
-            <ClientDashboard
-              lang={lang}
-              bookings={bookings}
-              onUpdateBooking={(updated) => {
-                const refreshed = bookings.map(b => b.id === updated.id ? updated : b);
-                saveBookingsToStorage(refreshed);
-              }}
-              onCancelBooking={(bookingId) => {
-                const refreshed = bookings.filter(b => b.id !== bookingId);
-                saveBookingsToStorage(refreshed);
-              }}
-              onClose={() => setActiveTab('inicio')}
-              showToast={showToast}
-            />
+            <Suspense fallback={<div className="text-slate-500 text-sm">Loading client dashboard...</div>}>
+              <ClientDashboard
+                lang={lang}
+                bookings={bookings}
+                onUpdateBooking={(updated) => {
+                  const refreshed = bookings.map(b => b.id === updated.id ? updated : b);
+                  saveBookingsToStorage(refreshed);
+                }}
+                onCancelBooking={(bookingId) => {
+                  const refreshed = bookings.filter(b => b.id !== bookingId);
+                  saveBookingsToStorage(refreshed);
+                }}
+                onClose={() => setActiveTab('inicio')}
+                showToast={showToast}
+              />
+            </Suspense>
           </div>
         )}
 
@@ -4693,12 +4847,12 @@ export default function App() {
                   </p>
 
                   <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-semibold text-slate-300 font-sans">
-                    <a href="tel:+34952442604" className="flex items-center gap-2 hover:text-white transition group">
+                    <a href={phoneTelHref} className="flex items-center gap-2 hover:text-white transition group">
                       <Phone className="h-4 w-4 text-sky-400 group-hover:scale-110 transition-transform duration-200" />
-                      <span>+34 952 44 26 04</span>
+                      <span>{websiteSettings.phoneDisplay}</span>
                     </a>
                     <a 
-                      href="https://wa.me/34683571614?text=Hola%20Sun%20Serramar%20Boutique%20Hostal" 
+                      href={whatsappUrl}
                       target="_blank" 
                       rel="noopener noreferrer" 
                       className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition group"
@@ -4706,9 +4860,9 @@ export default function App() {
                       <MessageSquare className="h-4 w-4 text-emerald-500 group-hover:scale-110 transition-transform duration-200" />
                       <span className="font-extrabold">{lang === 'es' ? 'WhatsApp Oficial' : 'Official WhatsApp'}</span>
                     </a>
-                    <a href="mailto:contact@sunserramar.com" className="flex items-center gap-2 hover:text-white transition group">
+                    <a href={`mailto:${websiteSettings.email}`} className="flex items-center gap-2 hover:text-white transition group">
                       <Mail className="h-4 w-4 text-sky-400 group-hover:scale-110 transition-transform duration-200" />
-                      <span>contact@sunserramar.com</span>
+                      <span>{websiteSettings.email}</span>
                     </a>
                   </div>
                 </div>
@@ -4743,7 +4897,7 @@ export default function App() {
           <button onClick={() => setLegalModal('cookies')} className="hover:text-white transition cursor-pointer">{lang === 'es' ? 'Política de Cookies' : 'Cookie Policy'}</button>
           <button onClick={() => setLegalModal('reservas')} className="hover:text-white transition cursor-pointer">{lang === 'es' ? 'Condiciones de Reserva' : 'Booking Conditions'}</button>
         </div>
-        <p>© {new Date().getFullYear()} Sun Serramar Boutique Hostal · C. las Flores, 5 · 29631 Benalmádena, Málaga · CIF/NIF: en proceso de registro. {lang === 'es' ? 'Todos los derechos reservados.' : 'All rights reserved.'}</p>
+        <p>© {new Date().getFullYear()} Sun Serramar Boutique Hostal · {websiteSettings.addressShort} · CIF/NIF: en proceso de registro. {lang === 'es' ? 'Todos los derechos reservados.' : 'All rights reserved.'}</p>
       </footer>
 
       {/* Legal Modal */}
@@ -4771,7 +4925,7 @@ export default function App() {
 
       {/* WhatsApp Floating Button */}
       <a
-        href={`https://wa.me/34683571614?text=${encodeURIComponent(t('Hola! Me gustaría información sobre habitaciones y disponibilidad.', 'Hello! I would like information about rooms and availability.', 'Bonjour! Je voudrais des informations sur les chambres et disponibilités.', 'مرحباً! أود الاستفسار عن الغرف والتوافر.'))}`}
+        href={`https://wa.me/${whatsappDigits}?text=${encodeURIComponent(t('Hola! Me gustaría información sobre habitaciones y disponibilidad.', 'Hello! I would like information about rooms and availability.', 'Bonjour! Je voudrais des informations sur les chambres et disponibilités.', 'مرحباً! أود الاستفسار عن الغرف والتوافر.'))}`}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-[84px] right-4 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 group"

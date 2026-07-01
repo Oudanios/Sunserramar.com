@@ -75,3 +75,14 @@ export interface CustomPage {
   isActive: boolean;
   showInNav: boolean;
 }
+
+export interface WebsiteSettings {
+  phoneMain: string;
+  phoneDisplay: string;
+  whatsapp: string;
+  whatsappDisplay: string;
+  email: string;
+  addressLine: string;
+  addressShort: string;
+  mapsQuery: string;
+}

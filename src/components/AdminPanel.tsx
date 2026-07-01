@@ -27,7 +27,7 @@ import {
   Database,
   Mail
 } from 'lucide-react';
-import { Room, Booking, Review, AnnouncementConfig, CustomPage } from '../types';
+import { Room, Booking, Review, AnnouncementConfig, CustomPage, WebsiteSettings } from '../types';
 
 interface AdminPanelProps {
   lang: 'es' | 'en' | 'fr' | 'ar';
@@ -36,11 +36,13 @@ interface AdminPanelProps {
   reviews: Review[];
   announcement: AnnouncementConfig;
   customPages: CustomPage[];
+  websiteSettings: WebsiteSettings;
   onUpdateRooms: (updated: Room[]) => void;
   onUpdateBookings: (updated: Booking[]) => void;
   onUpdateReviews: (updated: Review[]) => void;
   onUpdateAnnouncement: (updated: AnnouncementConfig) => void;
   onUpdatePages: (updated: CustomPage[]) => void;
+  onUpdateWebsiteSettings: (updated: WebsiteSettings) => void;
   onClose: () => void;
   heroSlides: any[];
   onUpdateHeroSlides: (updated: any[]) => void;
@@ -58,11 +60,13 @@ export default function AdminPanel({
   reviews, 
   announcement,
   customPages,
+  websiteSettings,
   onUpdateRooms,
   onUpdateBookings,
   onUpdateReviews,
   onUpdateAnnouncement,
   onUpdatePages,
+  onUpdateWebsiteSettings,
   onClose,
   heroSlides,
   onUpdateHeroSlides,
@@ -158,6 +162,60 @@ export default function AdminPanel({
     }
   }, [announcement]);
 
+  const buildRoomMediaDraft = (inputRooms: Room[]) => {
+    return inputRooms.reduce((acc, room) => {
+      acc[room.id] = {
+        image: room.image || '',
+        images: room.images || []
+      };
+      return acc;
+    }, {} as Record<string, { image: string; images: string[] }>);
+  };
+
+  // Media editor draft state (safe editing before applying to live site data)
+  const [draftHeroSlides, setDraftHeroSlides] = useState<any[]>(heroSlides || []);
+  const [draftUpgradeImages, setDraftUpgradeImages] = useState<string[]>(upgradeImages || []);
+  const [draftWelcomeImage, setDraftWelcomeImage] = useState<string>(welcomeImage || '');
+  const [draftRoomMedia, setDraftRoomMedia] = useState<Record<string, { image: string; images: string[] }>>(buildRoomMediaDraft(rooms));
+  const [hasUnsavedMediaChanges, setHasUnsavedMediaChanges] = useState(false);
+
+  useEffect(() => {
+    setDraftHeroSlides(heroSlides || []);
+    setDraftUpgradeImages(upgradeImages || []);
+    setDraftWelcomeImage(welcomeImage || '');
+    setDraftRoomMedia(buildRoomMediaDraft(rooms));
+    setHasUnsavedMediaChanges(false);
+  }, [heroSlides, upgradeImages, welcomeImage, rooms]);
+
+  const markMediaDirty = () => setHasUnsavedMediaChanges(true);
+
+  const handleDiscardMediaDraft = () => {
+    setDraftHeroSlides(heroSlides || []);
+    setDraftUpgradeImages(upgradeImages || []);
+    setDraftWelcomeImage(welcomeImage || '');
+    setDraftRoomMedia(buildRoomMediaDraft(rooms));
+    setHasUnsavedMediaChanges(false);
+    showToast(lang === 'es' ? 'Cambios descartados.' : 'Changes discarded.', 'success');
+  };
+
+  const handleSaveAllMedia = () => {
+    onUpdateHeroSlides(draftHeroSlides);
+    onUpdateUpgradeImages(draftUpgradeImages);
+    onUpdateWelcomeImage(draftWelcomeImage);
+    const updatedRooms = rooms.map((room) => {
+      const draft = draftRoomMedia[room.id];
+      if (!draft) return room;
+      return {
+        ...room,
+        image: draft.image,
+        images: draft.images
+      };
+    });
+    onUpdateRooms(updatedRooms);
+    setHasUnsavedMediaChanges(false);
+    showToast(lang === 'es' ? 'Multimedia guardada correctamente.' : 'Media changes saved successfully.', 'success');
+  };
+
   // Fetch server integrations status
   const fetchIntegrationStatus = async () => {
     setIsLoadingStatus(true);
@@ -236,6 +294,12 @@ export default function AdminPanel({
     showInNav: true
   });
 
+  const [websiteSettingsForm, setWebsiteSettingsForm] = useState<WebsiteSettings>(websiteSettings);
+
+  useEffect(() => {
+    setWebsiteSettingsForm(websiteSettings);
+  }, [websiteSettings]);
+
   const handleStartAddPage = () => {
     setEditingPage(null);
     setIsAddingPage(true);
@@ -305,6 +369,12 @@ export default function AdminPanel({
     e.preventDefault();
     onUpdateAnnouncement(activeAnnouncement);
     showToast(lang === 'es' ? '¡Anuncio guardado correctamente!' : 'Announcement saved successfully!', 'success');
+  };
+
+  const handleSaveWebsiteSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateWebsiteSettings(websiteSettingsForm);
+    showToast(lang === 'es' ? 'Configuración global guardada.' : 'Global website settings saved.', 'success');
   };
 
   // Handle Auth — server-side validation
@@ -1692,12 +1762,148 @@ export default function AdminPanel({
             </div>
           </div>
 
+          <div className="bg-white p-6 rounded-2xl border border-slate-150 shadow-sm space-y-4">
+            <h4 className="font-bold text-sm text-slate-900 border-b pb-2 flex items-center gap-1.5">
+              <Globe className="h-4 w-4 text-sky-600" />
+              {lang === 'es' ? 'Configuración Global del Sitio' : 'Global Website Settings'}
+            </h4>
+            <p className="text-slate-500 text-xs">
+              {lang === 'es'
+                ? 'Controla teléfono, WhatsApp, email y dirección mostrados en cabecera, contacto, footer y botón flotante.'
+                : 'Control phone, WhatsApp, email and address used in header, contact sections, footer and floating button.'}
+            </p>
+
+            <form onSubmit={handleSaveWebsiteSettings} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Phone href (tel:)</label>
+                <input
+                  type="text"
+                  value={websiteSettingsForm.phoneMain}
+                  onChange={(e) => setWebsiteSettingsForm({ ...websiteSettingsForm, phoneMain: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                  placeholder="+34952442604"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Phone visible text</label>
+                <input
+                  type="text"
+                  value={websiteSettingsForm.phoneDisplay}
+                  onChange={(e) => setWebsiteSettingsForm({ ...websiteSettingsForm, phoneDisplay: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                  placeholder="+34 952 44 26 04"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">WhatsApp number (href)</label>
+                <input
+                  type="text"
+                  value={websiteSettingsForm.whatsapp}
+                  onChange={(e) => setWebsiteSettingsForm({ ...websiteSettingsForm, whatsapp: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                  placeholder="+34683571614"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">WhatsApp visible text</label>
+                <input
+                  type="text"
+                  value={websiteSettingsForm.whatsappDisplay}
+                  onChange={(e) => setWebsiteSettingsForm({ ...websiteSettingsForm, whatsappDisplay: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                  placeholder="+34 683 57 16 14"
+                />
+              </div>
+
+              <div className="space-y-1 md:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Email</label>
+                <input
+                  type="email"
+                  value={websiteSettingsForm.email}
+                  onChange={(e) => setWebsiteSettingsForm({ ...websiteSettingsForm, email: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                  placeholder="contact@sunserramar.com"
+                />
+              </div>
+
+              <div className="space-y-1 md:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Address line</label>
+                <input
+                  type="text"
+                  value={websiteSettingsForm.addressLine}
+                  onChange={(e) => setWebsiteSettingsForm({ ...websiteSettingsForm, addressLine: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Footer short address</label>
+                <input
+                  type="text"
+                  value={websiteSettingsForm.addressShort}
+                  onChange={(e) => setWebsiteSettingsForm({ ...websiteSettingsForm, addressShort: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Google Maps query</label>
+                <input
+                  type="text"
+                  value={websiteSettingsForm.mapsQuery}
+                  onChange={(e) => setWebsiteSettingsForm({ ...websiteSettingsForm, mapsQuery: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5"
+                />
+              </div>
+
+              <div className="md:col-span-2 pt-2">
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase py-2.5 px-6 rounded-xl text-xs tracking-wider font-mono cursor-pointer transition shadow"
+                >
+                  💾 {lang === 'es' ? 'Guardar Configuración Global' : 'Save Global Settings'}
+                </button>
+              </div>
+            </form>
+          </div>
+
         </div>
       )}
 
       {/* F. MEDIA & PICTURES VIEW */}
       {adminTab === 'media' && (
         <div className="space-y-8 animate-in fade-in duration-200 text-xs">
+
+          <div className="sticky top-3 z-20 bg-slate-900 text-white border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-300">
+                {lang === 'es' ? 'Control seguro de cambios multimedia' : 'Safe media change control'}
+              </p>
+              <p className="text-xs text-slate-200">
+                {hasUnsavedMediaChanges
+                  ? (lang === 'es' ? 'Hay cambios pendientes sin guardar.' : 'You have unsaved pending changes.')
+                  : (lang === 'es' ? 'Todo sincronizado con la configuración actual.' : 'Everything is synchronized with current settings.')}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDiscardMediaDraft}
+                disabled={!hasUnsavedMediaChanges}
+                className="px-3 py-2 rounded-xl text-[11px] font-bold bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                {lang === 'es' ? 'Descartar' : 'Discard'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAllMedia}
+                disabled={!hasUnsavedMediaChanges}
+                className="px-3 py-2 rounded-xl text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                {lang === 'es' ? 'Guardar Cambios' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
           
           <div className="bg-white p-6 rounded-2xl border border-slate-150 shadow-sm space-y-2">
             <h3 className="font-bold text-slate-800 uppercase tracking-wider font-mono text-[11px] flex items-center gap-2">
@@ -1736,7 +1942,8 @@ export default function AdminPanel({
                       descEs: 'Nuestras mejores habitaciones reformadas con cuidado y ubicadas en Arroyo de la Miel.',
                       descEn: 'Our best high-quality rooms carefully arranged in Arroyo de la Miel.'
                     };
-                    onUpdateHeroSlides([...heroSlides, newSlide]);
+                      setDraftHeroSlides([...draftHeroSlides, newSlide]);
+                      markMediaDirty();
                   }}
                   className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-1.5 px-3.5 rounded-lg flex items-center gap-1.5 transition text-[10.5px] uppercase cursor-pointer shrink-0"
                 >
@@ -1746,7 +1953,7 @@ export default function AdminPanel({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {heroSlides.map((slide, idx) => (
+                  {draftHeroSlides.map((slide, idx) => (
                   <div key={idx} className="border border-slate-150 rounded-2xl p-5 bg-slate-50/50 space-y-4 relative text-left">
                     <div className="absolute top-4 right-4 bg-slate-900 text-white text-[9.5px] font-bold px-2 py-0.5 rounded font-mono">
                       #{idx + 1}
@@ -1767,9 +1974,10 @@ export default function AdminPanel({
                           type="text"
                           value={slide.image}
                           onChange={(e) => {
-                            const updated = [...heroSlides];
+                            const updated = [...draftHeroSlides];
                             updated[idx] = { ...slide, image: e.target.value };
-                            onUpdateHeroSlides(updated);
+                            setDraftHeroSlides(updated);
+                            markMediaDirty();
                           }}
                           className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs"
                           placeholder="https://..."
@@ -1788,9 +1996,10 @@ export default function AdminPanel({
                                   const reader = new FileReader();
                                   reader.onload = (event) => {
                                     if (event.target?.result) {
-                                      const updated = [...heroSlides];
+                                      const updated = [...draftHeroSlides];
                                       updated[idx] = { ...slide, image: event.target.result as string };
-                                      onUpdateHeroSlides(updated);
+                                      setDraftHeroSlides(updated);
+                                      markMediaDirty();
                                     }
                                   };
                                   reader.readAsDataURL(file);
@@ -1799,12 +2008,13 @@ export default function AdminPanel({
                             />
                           </label>
 
-                          {heroSlides.length > 1 && (
+                          {draftHeroSlides.length > 1 && (
                             <button
                               type="button"
                               onClick={() => {
-                                const updated = heroSlides.filter((_, sIdx) => sIdx !== idx);
-                                onUpdateHeroSlides(updated);
+                                const updated = draftHeroSlides.filter((_, sIdx) => sIdx !== idx);
+                                setDraftHeroSlides(updated);
+                                markMediaDirty();
                               }}
                               className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 p-1.5 rounded-lg transition shrink-0"
                               title={lang === 'es' ? 'Eliminar Diapositiva' : 'Remove Slide'}
@@ -1824,9 +2034,10 @@ export default function AdminPanel({
                           type="text"
                           value={slide.taglineEs}
                           onChange={(e) => {
-                            const updated = [...heroSlides];
+                            const updated = [...draftHeroSlides];
                             updated[idx] = { ...slide, taglineEs: e.target.value };
-                            onUpdateHeroSlides(updated);
+                            setDraftHeroSlides(updated);
+                            markMediaDirty();
                           }}
                           className="w-full bg-white border rounded p-1.5 text-[11px]"
                         />
@@ -1837,9 +2048,10 @@ export default function AdminPanel({
                           type="text"
                           value={slide.taglineEn}
                           onChange={(e) => {
-                            const updated = [...heroSlides];
+                            const updated = [...draftHeroSlides];
                             updated[idx] = { ...slide, taglineEn: e.target.value };
-                            onUpdateHeroSlides(updated);
+                            setDraftHeroSlides(updated);
+                            markMediaDirty();
                           }}
                           className="w-full bg-white border rounded p-1.5 text-[11px]"
                         />
@@ -1851,9 +2063,10 @@ export default function AdminPanel({
                           type="text"
                           value={slide.titleEs}
                           onChange={(e) => {
-                            const updated = [...heroSlides];
+                            const updated = [...draftHeroSlides];
                             updated[idx] = { ...slide, titleEs: e.target.value };
-                            onUpdateHeroSlides(updated);
+                            setDraftHeroSlides(updated);
+                            markMediaDirty();
                           }}
                           className="w-full bg-white border rounded p-1.5 text-[11px] font-bold"
                         />
@@ -1864,9 +2077,10 @@ export default function AdminPanel({
                           type="text"
                           value={slide.titleEn}
                           onChange={(e) => {
-                            const updated = [...heroSlides];
+                            const updated = [...draftHeroSlides];
                             updated[idx] = { ...slide, titleEn: e.target.value };
-                            onUpdateHeroSlides(updated);
+                            setDraftHeroSlides(updated);
+                            markMediaDirty();
                           }}
                           className="w-full bg-white border rounded p-1.5 text-[11px] font-bold"
                         />
@@ -1878,9 +2092,10 @@ export default function AdminPanel({
                           rows={2}
                           value={slide.descEs}
                           onChange={(e) => {
-                            const updated = [...heroSlides];
+                            const updated = [...draftHeroSlides];
                             updated[idx] = { ...slide, descEs: e.target.value };
-                            onUpdateHeroSlides(updated);
+                            setDraftHeroSlides(updated);
+                            markMediaDirty();
                           }}
                           className="w-full bg-white border rounded p-1.5 text-[11px] leading-snug"
                         />
@@ -1891,9 +2106,10 @@ export default function AdminPanel({
                           rows={2}
                           value={slide.descEn}
                           onChange={(e) => {
-                            const updated = [...heroSlides];
+                            const updated = [...draftHeroSlides];
                             updated[idx] = { ...slide, descEn: e.target.value };
-                            onUpdateHeroSlides(updated);
+                            setDraftHeroSlides(updated);
+                            markMediaDirty();
                           }}
                           className="w-full bg-white border rounded p-1.5 text-[11px] leading-snug"
                         />
@@ -1917,7 +2133,7 @@ export default function AdminPanel({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {upgradeImages.map((imgUrl, idx) => (
+                {draftUpgradeImages.map((imgUrl, idx) => (
                   <div key={idx} className="border border-slate-150 rounded-xl p-3 bg-slate-50 space-y-3 text-left">
                     <p className="font-mono font-bold text-[10px] text-slate-400">IMAGEN #{idx + 1}</p>
                     
@@ -1930,9 +2146,10 @@ export default function AdminPanel({
                         type="text"
                         value={imgUrl}
                         onChange={(e) => {
-                          const updated = [...upgradeImages];
+                          const updated = [...draftUpgradeImages];
                           updated[idx] = e.target.value;
-                          onUpdateUpgradeImages(updated);
+                          setDraftUpgradeImages(updated);
+                          markMediaDirty();
                         }}
                         className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-[10.5px]"
                         placeholder="Link URL"
@@ -1950,9 +2167,10 @@ export default function AdminPanel({
                               const reader = new FileReader();
                               reader.onload = (event) => {
                                 if (event.target?.result) {
-                                  const updated = [...upgradeImages];
+                                  const updated = [...draftUpgradeImages];
                                   updated[idx] = event.target.result as string;
-                                  onUpdateUpgradeImages(updated);
+                                  setDraftUpgradeImages(updated);
+                                  markMediaDirty();
                                 }
                               };
                               reader.readAsDataURL(file);
@@ -1980,7 +2198,7 @@ export default function AdminPanel({
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
                 <div className="aspect-[4/3] rounded-2xl bg-slate-100 overflow-hidden border shadow-sm">
-                  <img src={welcomeImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                  <img src={draftWelcomeImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                 </div>
 
                 <div className="md:col-span-3 space-y-3">
@@ -1990,8 +2208,11 @@ export default function AdminPanel({
                     </label>
                     <input
                       type="text"
-                      value={welcomeImage}
-                      onChange={(e) => onUpdateWelcomeImage(e.target.value)}
+                      value={draftWelcomeImage}
+                      onChange={(e) => {
+                        setDraftWelcomeImage(e.target.value);
+                        markMediaDirty();
+                      }}
                       className="w-full bg-white border border-slate-250 rounded-xl p-2.5 font-mono text-[10.5px]"
                     />
                   </div>
@@ -2008,7 +2229,8 @@ export default function AdminPanel({
                           const reader = new FileReader();
                           reader.onload = (event) => {
                             if (event.target?.result) {
-                              onUpdateWelcomeImage(event.target.result as string);
+                              setDraftWelcomeImage(event.target.result as string);
+                              markMediaDirty();
                             }
                           };
                           reader.readAsDataURL(file);
@@ -2034,9 +2256,12 @@ export default function AdminPanel({
 
               <div className="space-y-4">
                 {rooms.map((room) => (
+                  (() => {
+                    const roomDraft = draftRoomMedia[room.id] || { image: room.image || '', images: room.images || [] };
+                    return (
                   <div key={room.id} className="border border-slate-150 rounded-xl p-4 bg-slate-50/30 flex flex-col md:flex-row gap-4 items-start text-left">
                     <div className="w-20 h-20 rounded-lg overflow-hidden border shrink-0 bg-slate-150">
-                      <img src={room.image} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                      <img src={roomDraft.image} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                     </div>
 
                     <div className="flex-1 space-y-3 w-full text-left">
@@ -2054,10 +2279,16 @@ export default function AdminPanel({
                           <label className="text-[9px] font-bold text-slate-450 uppercase tracking-widest block text-left">{lang === 'es' ? 'Imagen Principal de la Habitación' : 'Primary Room Cover'}</label>
                           <input
                             type="text"
-                            value={room.image}
+                            value={roomDraft.image}
                             onChange={(e) => {
-                              const updated = rooms.map(r => r.id === room.id ? { ...r, image: e.target.value } : r);
-                              onUpdateRooms(updated);
+                              setDraftRoomMedia((prev) => ({
+                                ...prev,
+                                [room.id]: {
+                                  ...roomDraft,
+                                  image: e.target.value
+                                }
+                              }));
+                              markMediaDirty();
                             }}
                             className="w-full bg-white border rounded p-1.5 text-[10.5px] font-mono"
                           />
@@ -2073,8 +2304,14 @@ export default function AdminPanel({
                                   const reader = new FileReader();
                                   reader.onload = (event) => {
                                     if (event.target?.result) {
-                                      const updated = rooms.map(r => r.id === room.id ? { ...r, image: event.target.result as string } : r);
-                                      onUpdateRooms(updated);
+                                      setDraftRoomMedia((prev) => ({
+                                        ...prev,
+                                        [room.id]: {
+                                          ...roomDraft,
+                                          image: event.target.result as string
+                                        }
+                                      }));
+                                      markMediaDirty();
                                     }
                                   };
                                   reader.readAsDataURL(file);
@@ -2088,11 +2325,17 @@ export default function AdminPanel({
                           <label className="text-[9px] font-bold text-slate-450 uppercase tracking-widest block text-left">{lang === 'es' ? 'Imágenes de la Galería (Separadas por saltos o comas)' : 'Gallery Images'}</label>
                           <textarea
                             rows={3}
-                            value={(room.images || []).join(', ')}
+                            value={(roomDraft.images || []).join(', ')}
                             onChange={(e) => {
                               const arr = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                              const updated = rooms.map(r => r.id === room.id ? { ...r, images: arr } : r);
-                              onUpdateRooms(updated);
+                              setDraftRoomMedia((prev) => ({
+                                ...prev,
+                                [room.id]: {
+                                  ...roomDraft,
+                                  images: arr
+                                }
+                              }));
+                              markMediaDirty();
                             }}
                             className="w-full bg-white border rounded p-1.5 text-[10px] font-mono leading-snug"
                             placeholder="url1, url2, url3"
@@ -2101,6 +2344,8 @@ export default function AdminPanel({
                       </div>
                     </div>
                   </div>
+                    );
+                  })()
                 ))}
               </div>
             </div>
