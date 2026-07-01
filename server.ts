@@ -317,14 +317,36 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
       form.set('promo_code', promo.trim());
     }
 
-    const cloudbedsRes = await fetch('https://us2.cloudbeds.com/booking/rooms', {
+    const requestHeaders = {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'Accept': 'application/json, text/plain, */*',
+      'Origin': 'https://us2.cloudbeds.com',
+      'Referer': `https://us2.cloudbeds.com/en/reservation/eh45iO/?currency=eur&checkin=${checkInIso}&checkout=${checkOutIso}&guests=${guestsCount}&adults=${guestsCount}`,
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+      'X-Requested-With': 'XMLHttpRequest'
+    };
+
+    let cloudbedsRes = await fetch('https://us2.cloudbeds.com/booking/rooms', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'Accept': 'application/json'
-      },
+      headers: requestHeaders,
       body: form.toString()
     });
+
+    // Fallback request shape for stricter edge filters.
+    if (!cloudbedsRes.ok) {
+      const fallbackForm = new URLSearchParams({
+        checkin: checkInIso,
+        checkout: checkOutIso,
+        currency_code: 'EUR',
+        lang: 'en',
+        widget_property: '206261339807872'
+      });
+      cloudbedsRes = await fetch('https://us2.cloudbeds.com/booking/rooms', {
+        method: 'POST',
+        headers: requestHeaders,
+        body: fallbackForm.toString()
+      });
+    }
 
     if (!cloudbedsRes.ok) {
       throw new Error(`Cloudbeds status ${cloudbedsRes.status}`);
