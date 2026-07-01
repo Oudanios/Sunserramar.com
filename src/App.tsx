@@ -203,9 +203,15 @@ export default function App() {
   // Legal modal state
   const [legalModal, setLegalModal] = useState<'aviso' | 'privacidad' | 'cookies' | 'reservas' | null>(null);
 
+  // Cookie consent state
+  const [cookieConsent, setCookieConsent] = useState<'accepted' | 'rejected' | null>(() => {
+    try { return (localStorage.getItem('ss_cookie_consent') as any) || null; } catch { return null; }
+  });
+  const acceptCookies = () => { setCookieConsent('accepted'); try { localStorage.setItem('ss_cookie_consent', 'accepted'); } catch {} };
+  const rejectCookies = () => { setCookieConsent('rejected'); try { localStorage.setItem('ss_cookie_consent', 'rejected'); } catch {} };
+
   // Mobile menu open
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
 
   // Rooms filter state
   const [bathroomFilter, setBathroomFilter] = useState<'all' | 'private' | 'shared'>('all');
@@ -1667,6 +1673,36 @@ export default function App() {
  
             {/* Premium Personalized Welcome Letter & Deluxe Apartment Upgrade */}
             <PremiumWelcomeUpgrade lang={lang} onBookUpgrade={handlePremiumUpgradeBooked} customImages={upgradeImages} />
+
+            {/* Trust / Social Proof Strip */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-8">
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm px-6 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-0 sm:divide-x sm:divide-slate-100">
+                {/* Booking.com */}
+                <div className="flex flex-col items-center text-center space-y-1 px-4">
+                  <div className="text-2xl font-black text-[#003B95] leading-none">9.2</div>
+                  <div className="flex gap-0.5">{[1,2,3,4,5].map(i => <Star key={i} className="h-3 w-3 fill-[#FFB700] text-[#FFB700]" />)}</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Booking.com</div>
+                </div>
+                {/* Google */}
+                <div className="flex flex-col items-center text-center space-y-1 px-4">
+                  <div className="text-2xl font-black text-slate-900 leading-none">4.8</div>
+                  <div className="flex gap-0.5">{[1,2,3,4,5].map(i => <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />)}</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Google Reviews</div>
+                </div>
+                {/* Direct price */}
+                <div className="flex flex-col items-center text-center space-y-1 px-4">
+                  <div className="text-2xl font-black text-emerald-600 leading-none">-12%</div>
+                  <div className="text-[11px] font-bold text-emerald-700">vs Booking.com</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('Precio Directo', 'Direct Price', 'Prix Direct', 'السعر المباشر')}</div>
+                </div>
+                {/* Free cancellation */}
+                <div className="flex flex-col items-center text-center space-y-1 px-4">
+                  <ShieldCheck className="h-7 w-7 text-sky-600" />
+                  <div className="text-[11px] font-bold text-slate-800">{t('Cancelación Gratis', 'Free Cancellation', 'Annulation Gratuite', 'إلغاء مجاني')}</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('Hasta 48h antes', 'Up to 48h prior', "Jusqu'à 48h avant", 'حتى 48 ساعة')}</div>
+                </div>
+              </div>
+            </div>
 
             {/* General Description Intro Card */}
             <section className="max-w-7xl mx-auto px-4 sm:px-8">
@@ -4733,65 +4769,73 @@ export default function App() {
         </div>
       )}
 
-      {/* Quick Action Floating Action Button (FAB) */}
-      <div className="fixed bottom-[80px] right-4 lg:bottom-8 lg:right-8 z-50 flex flex-col items-end">
-        <AnimatePresence>
-          {fabOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col gap-3 mb-4 items-end"
-            >
-              <button
-                onClick={() => {
-                  setFabOpen(false);
-                  window.open('https://wa.me/34600000000', '_blank');
-                }}
-                className="flex items-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-full shadow-lg transition-transform hover:scale-105"
-              >
-                <span className="text-sm font-bold">{lang === 'es' ? 'Soporte WhatsApp' : 'WhatsApp Support'}</span>
-                <MessageSquare className="h-5 w-5" />
-              </button>
-              
-              <button
-                onClick={() => {
-                  setFabOpen(false);
-                  setActiveTab('habitaciones');
-                  window.scrollTo({top: 0, behavior: 'smooth'});
-                }}
-                className="flex items-center gap-3 bg-sky-500 hover:bg-sky-600 text-white px-4 py-2.5 rounded-full shadow-lg transition-transform hover:scale-105"
-              >
-                <span className="text-sm font-bold">{lang === 'es' ? 'Reserva Directa' : 'Direct Booking'}</span>
-                <Calendar className="h-5 w-5" />
-              </button>
-              
-              <button
-                onClick={() => {
-                  setFabOpen(false);
-                  setActiveTab('panel-cliente');
-                  window.scrollTo({top: 0, behavior: 'smooth'});
-                }}
-                className="flex items-center gap-3 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-full shadow-lg transition-transform hover:scale-105"
-              >
-                <span className="text-sm font-bold">{lang === 'es' ? 'Mis Reservas' : 'My Reservations'}</span>
-                <User className="h-5 w-5" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* WhatsApp Floating Button */}
+      <a
+        href={`https://wa.me/34683571614?text=${encodeURIComponent(t('Hola! Me gustaría información sobre habitaciones y disponibilidad.', 'Hello! I would like information about rooms and availability.', 'Bonjour! Je voudrais des informations sur les chambres et disponibilités.', 'مرحباً! أود الاستفسار عن الغرف والتوافر.'))}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-[84px] right-4 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 group"
+        aria-label="Chat on WhatsApp"
+      >
+        <span className="hidden group-hover:flex lg:group-hover:flex items-center bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-full shadow-lg border border-slate-100 whitespace-nowrap animate-in slide-in-from-right-4 duration-200">
+          {t('Chatear por WhatsApp', 'Chat on WhatsApp', 'Chatter sur WhatsApp', 'تواصل عبر واتساب')}
+        </span>
+        <div className="h-14 w-14 flex items-center justify-center rounded-full bg-[#25D366] hover:bg-[#20BA5A] shadow-[0_4px_20px_rgba(37,211,102,0.45)] hover:shadow-[0_6px_28px_rgba(37,211,102,0.6)] transition-all duration-300 hover:scale-110 active:scale-95">
+          <svg viewBox="0 0 24 24" className="h-7 w-7 fill-white">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+        </div>
+      </a>
 
-        <button
-          onClick={() => setFabOpen(!fabOpen)}
-          className={`h-14 w-14 flex items-center justify-center rounded-full shadow-xl transition-all duration-300 transform ${
-            fabOpen ? 'bg-rose-500 hover:bg-rose-600 rotate-45' : 'bg-sky-600 hover:bg-sky-700'
-          }`}
-          aria-label="Quick Actions"
-        >
-          <Plus className="h-6 w-6 text-white" />
-        </button>
-      </div>
+      {/* Cookie Consent Banner */}
+      <AnimatePresence>
+        {cookieConsent === null && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed bottom-[72px] lg:bottom-0 left-0 right-0 z-[150] bg-slate-900/98 backdrop-blur-md border-t border-slate-700 shadow-[0_-8px_32px_rgba(0,0,0,0.4)]"
+          >
+            <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <span className="text-2xl shrink-0 mt-0.5">🍪</span>
+                <div className="space-y-1">
+                  <p className="text-white text-sm font-semibold leading-snug">
+                    {t('Usamos cookies para mejorar tu experiencia', 'We use cookies to improve your experience', 'Nous utilisons des cookies pour améliorer votre expérience', 'نستخدم ملفات تعريف الارتباط لتحسين تجربتك')}
+                  </p>
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    {t(
+                      'Utilizamos cookies técnicas necesarias y funcionales para garantizar el correcto funcionamiento del sitio.',
+                      'We use necessary and functional cookies to ensure the website works correctly.',
+                      'Nous utilisons des cookies nécessaires et fonctionnels pour le bon fonctionnement du site.',
+                      'نستخدم ملفات تعريف الارتباط الضرورية والوظيفية لضمان عمل الموقع بشكل صحيح.'
+                    )}
+                    {' '}
+                    <button onClick={() => setLegalModal('cookies')} className="text-sky-400 hover:text-sky-300 underline underline-offset-2 transition">
+                      {t('Política de Cookies', 'Cookie Policy', 'Politique de cookies', 'سياسة الكوكيز')}
+                    </button>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={rejectCookies}
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white border border-slate-600 hover:border-slate-400 rounded-xl transition"
+                >
+                  {t('Solo necesarias', 'Necessary only', 'Nécessaires uniquement', 'الضرورية فقط')}
+                </button>
+                <button
+                  onClick={acceptCookies}
+                  className="px-5 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white rounded-xl transition shadow-md hover:shadow-sky-500/30"
+                >
+                  {t('Aceptar todo', 'Accept all', 'Tout accepter', 'قبول الكل')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Smart Mobile Sticky Bottom Navigation Bar */}
       <div 
