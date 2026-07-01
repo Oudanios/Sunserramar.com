@@ -1,0 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Custom Premium Gold variables */
+  --color-gold-50: #faf7ee;
+  --color-gold-100: #f3e9d0;
+  --color-gold-200: #e6d3a2;
+  --color-gold-300: #d6b670;
+  --color-gold-400: #c69944;
+  --color-gold-500: #b57c1e; /* Core luxury gold */
+  --color-gold-600: #9e6417;
+  --color-gold-700: #7e4a14;
+  --color-gold-850: #57310d;
+  --color-gold-900: #46250a;
+  --color-gold-950: #291202;
+
+  /* Deep Royal Navy & Mediterranean Blues variables */
+  --color-luxury-blue-50: #f4f7fa;
+  --color-luxury-blue-105: #e8eef5;
+  --color-luxury-blue-200: #ccd8e8;
+  --color-luxury-blue-300: #a2b8d4;
+  --color-luxury-blue-400: #7193bc;
+  --color-luxury-blue-500: #4b709e;
+  --color-luxury-blue-600: #38557e;
+  --color-luxury-blue-700: #2d4567;
+  --color-luxury-blue-800: #1c2b41;
+  --color-luxury-blue-900: #0f1826; /* Luxury dark navy background */
+  --color-luxury-blue-950: #080d16;
+
+  /* Map standard Sky classes to B Travel Teal & Cyan */
+  --color-sky-50: #e6f6f7;
+  --color-sky-105: #ccedf0;
+  --color-sky-200: #99dbdf;
+  --color-sky-300: #66c8ce;
+  --color-sky-400: #33b6be;
+  --color-sky-500: #009ca6; /* B Travel Core Turquoise Teal */
+  --color-sky-600: #00848c; /* B Travel Dark Teal */
+  --color-sky-700: #006066;
+  --color-sky-800: #00464a;
+  --color-sky-900: #002d30;
+  --color-sky-950: #00191b;
+
+  /* Map standard Amber/Yellow classes to Luxury Royal Gold */
+  --color-amber-50: var(--color-gold-50);
+  --color-amber-100: var(--color-gold-100);
+  --color-amber-200: var(--color-gold-200);
+  --color-amber-300: var(--color-gold-300);
+  --color-amber-400: var(--color-gold-400);
+  --color-amber-500: var(--color-gold-500);
+  --color-amber-600: var(--color-gold-600);
+  --color-amber-700: var(--color-gold-700);
+  --color-amber-800: var(--color-gold-850);
+  --color-amber-900: var(--color-gold-900);
+  --color-amber-950: var(--color-gold-950);
+}
+
+/* Custom visual utilities */
+html {
+  scroll-behavior: smooth;
+  background-color: var(--color-luxury-blue-50);
+}
+
+.text-gold-shimmer {
+  background: linear-gradient(to right, #b57c1e 0%, #ecd6a0 50%, #b57c1e 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shine 4s linear infinite;
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.shadow-premium {
+  box-shadow: 0 10px 40px -10px rgba(15, 24, 38, 0.08), 0 1px 3px rgba(181, 124, 30, 0.05);
+}
+
+.shadow-gold-glow {
+  box-shadow: 0 0 25px rgba(181, 124, 30, 0.15);
+}
+
+.border-gold-gradient {
+  border-image: linear-gradient(to right, #b57c1e, #f3e9d0, #b57c1e) 1;
+}
+
+/* Background gradients */
+.bg-navy-premium {
+  background: radial-gradient(circle at 10% 20%, var(--color-luxury-blue-900) 0%, var(--color-luxury-blue-950) 90%);
+}
+
+.bg-gold-soft-gradient {
+  background: linear-gradient(135deg, var(--color-gold-50) 0%, #f6efe0 100%);
+}
+
+/* Transitions and hover states */
+.transition-luxury {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slow-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: slow-spin 15s linear infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.88; transform: scale(1.02); }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 4s ease-in-out infinite;
+}
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
