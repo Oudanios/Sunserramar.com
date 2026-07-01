@@ -1,0 +1,27 @@
+name: Keep Render Server Awake
+
+on:
+  schedule:
+    # Ping every 14 minutes (Render free tier sleeps after 15 min inactivity)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Sun Serramar server
+        run: |
+          echo "Pinging sunserramar-com.onrender.com..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://sunserramar-com.onrender.com/health)
+          echo "Response: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "Server is awake and healthy"
+          else
+            echo "Server returned $STATUS — may be waking up"
+          fi
+
+      - name: Ping custom domain (if DNS propagated)
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://www.sunserramar.com/health 2>/dev/null || echo "dns-pending")
+          echo "www.sunserramar.com: $STATUS"
