@@ -15,11 +15,12 @@ import { Room } from '../types';
 interface RoomCardProps {
   room: Room;
   lang: 'es' | 'en' | 'fr' | 'ar';
+  ratesVerified?: boolean;
   onBookDirect: (room: Room) => void;
   key?: string | number;
 }
 
-export default function RoomCard({ room, lang, onBookDirect }: RoomCardProps) {
+export default function RoomCard({ room, lang, ratesVerified = false, onBookDirect }: RoomCardProps) {
   const [currentImgIdx, setCurrentImgIdx] = useState(0);
   const imagesList = room.images && room.images.length > 0 ? room.images : [room.image];
 
@@ -281,18 +282,27 @@ export default function RoomCard({ room, lang, onBookDirect }: RoomCardProps) {
               <span>{t('Tarifa Cloudbeds', 'Cloudbeds Rate', 'Tarif Cloudbeds', 'سعر كلاودبدز')}</span>
             </span>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black text-slate-900 transition-all duration-300">€{room.price}</span>
-              <span className="text-xs text-slate-400 font-medium">/{t('noche', 'night', 'nuit', 'ليلة')}</span>
+              {ratesVerified ? (
+                <>
+                  <span className="text-2xl font-black text-slate-900 transition-all duration-300">€{room.price}</span>
+                  <span className="text-xs text-slate-400 font-medium">/{t('noche', 'night', 'nuit', 'ليلة')}</span>
+                </>
+              ) : (
+                <span className="text-xs font-semibold text-amber-700">
+                  {t('Sincronizando tarifa oficial...', 'Syncing official rate...', 'Synchronisation du tarif officiel...', 'جارِ مزامنة السعر الرسمي...')}
+                </span>
+              )}
             </div>
           </div>
 
           <button
             onClick={() => onBookDirect(room)}
-            className="bg-white/90 hover:bg-sky-50 backdrop-blur text-sky-600 hover:text-sky-700 border border-sky-150 font-extrabold py-3 px-5 sm:px-6 rounded-xl text-xs tracking-wide transition-all duration-350 cursor-pointer shadow-sm hover:shadow-md hover:shadow-sky-100/40 active:scale-95 flex items-center gap-1.5 uppercase font-sans"
+            disabled={!ratesVerified}
+            className="bg-white/90 hover:bg-sky-50 backdrop-blur text-sky-600 hover:text-sky-700 border border-sky-150 font-extrabold py-3 px-5 sm:px-6 rounded-xl text-xs tracking-wide transition-all duration-350 cursor-pointer shadow-sm hover:shadow-md hover:shadow-sky-100/40 active:scale-95 flex items-center gap-1.5 uppercase font-sans disabled:opacity-50 disabled:cursor-not-allowed"
             id={`book-btn-${room.id}`}
           >
             <CalendarCheck className="h-4 w-4 text-sky-500" />
-            <span>{t('RESERVAR', 'BOOK NOW', 'RÉSERVER', 'احجز الآن')}</span>
+            <span>{ratesVerified ? t('RESERVAR', 'BOOK NOW', 'RÉSERVER', 'احجز الآن') : t('SINCRONIZANDO', 'SYNCING', 'SYNCHRO', 'جارِ المزامنة')}</span>
           </button>
         </div>
 

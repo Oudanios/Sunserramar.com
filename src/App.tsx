@@ -284,6 +284,7 @@ export default function App() {
   const [successViewMode, setSuccessViewMode] = useState<'voucher' | 'email'>('voucher');
   const [cloudbedsSyncStatus, setCloudbedsSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
+  const [hasLiveCloudbedsRates, setHasLiveCloudbedsRates] = useState(false);
   const cloudbedsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cloudbedsAbortRef = useRef<AbortController | null>(null);
   const cloudbedsCacheRef = useRef<{ key: string; expiresAt: number; rates: any } | null>(null);
@@ -549,6 +550,7 @@ export default function App() {
           rates: data.rates,
           expiresAt: Date.now() + 15_000
         };
+        setHasLiveCloudbedsRates(true);
         setCloudbedsSyncStatus('success');
         setLastSyncTime(new Date().toLocaleTimeString());
         console.log(`[CLOUDBEDS LIVE SYNC] Successfully loaded rates from property eh45iO:`, data.rates);
@@ -592,6 +594,22 @@ export default function App() {
     };
   }, [activeTab, selectedRoomForBooking, checkIn, checkOut, guestsCount, promoCode, quickCheckIn, quickCheckOut, quickGuests, quickPromoCode]);
 
+  // Retry quickly after Cloudbeds errors while user is actively on price surfaces.
+  useEffect(() => {
+    const shouldSyncCloudbeds = activeTab === 'inicio' || activeTab === 'habitaciones' || !!selectedRoomForBooking;
+    if (!shouldSyncCloudbeds || cloudbedsSyncStatus !== 'error') return;
+
+    const retryId = setTimeout(() => {
+      const effectiveIn = checkIn || quickCheckIn || '';
+      const effectiveOut = checkOut || quickCheckOut || '';
+      const effectiveGuests = checkIn ? guestsCount : (quickGuests || 2);
+      const effectivePromo = checkIn ? promoCode : (quickPromoCode || '');
+      syncCloudbedsRates(effectiveIn, effectiveOut, effectiveGuests, effectivePromo, true);
+    }, 2500);
+
+    return () => clearTimeout(retryId);
+  }, [cloudbedsSyncStatus, activeTab, selectedRoomForBooking, checkIn, checkOut, guestsCount, promoCode, quickCheckIn, quickCheckOut, quickGuests, quickPromoCode]);
+
   useEffect(() => {
     return () => {
       if (cloudbedsDebounceRef.current) clearTimeout(cloudbedsDebounceRef.current);
@@ -610,7 +628,7 @@ export default function App() {
       const effectiveGuests = checkIn ? guestsCount : (quickGuests || 2);
       const effectivePromo = checkIn ? promoCode : (quickPromoCode || '');
       syncCloudbedsRates(effectiveIn, effectiveOut, effectiveGuests, effectivePromo, true);
-    }, 20_000);
+    }, 8_000);
 
     return () => clearInterval(intervalId);
   }, [activeTab, selectedRoomForBooking, checkIn, checkOut, guestsCount, promoCode, quickCheckIn, quickCheckOut, quickGuests, quickPromoCode]);
@@ -1942,6 +1960,7 @@ export default function App() {
                     key={room.id}
                     room={room}
                     lang={lang}
+                    ratesVerified={hasLiveCloudbedsRates}
                     onBookDirect={(rm) => {
                       setActiveTab('habitaciones');
                       triggerQuickBooking(rm);
@@ -2188,7 +2207,7 @@ export default function App() {
                       ? (lang === 'es' ? 'Consultando disponibilidad y precios de hoy...' : 'Fetching live availability and guest rates...')
                       : cloudbedsSyncStatus === 'success'
                       ? (lang === 'es' ? `Precios actualizados al instante para tus fechas (Último sync: ${lastSyncTime})` : `Instant dynamic rates verified for your dates (Last sync: ${lastSyncTime})`)
-                      : (lang === 'es' ? 'Error temporal con Cloudbeds. Reintentando para mostrar tarifas oficiales.' : 'Temporary Cloudbeds error. Retrying to show official rates.')}
+                      : (lang === 'es' ? 'Conexión Cloudbeds en reintento automático para mostrar solo tarifas oficiales.' : 'Cloudbeds connection retrying automatically to show only official rates.')}
                   </p>
                 </div>
               </div>
@@ -2211,6 +2230,7 @@ export default function App() {
                   key={room.id}
                   room={room}
                   lang={lang}
+                  ratesVerified={hasLiveCloudbedsRates}
                   onBookDirect={(rm) => {
                     triggerQuickBooking(rm);
                     setTimeout(() => {
