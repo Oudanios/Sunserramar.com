@@ -31,10 +31,10 @@ interface PremiumWelcomeUpgradeProps {
 
 // Curated high-luxury photography for the "Sun Kissed Apartment"
 const UPGRADE_IMAGES = [
-  'https://cf.bstatic.com/xdata/images/hotel/max1024x768/145303248.jpg?k=5fbef33b7c58fee5b15b1cc2bca107fca5c96a551b08ccdc8eccac4a4c4bc78e&o=',
-  'https://cf.bstatic.com/xdata/images/hotel/max1024x768/733636585.jpg?k=a788657d55cfe2d19d472e884d45d61349c6bd1e7b0727de61c724228ecf0f62&o=',
-  'https://cf.bstatic.com/xdata/images/hotel/max1024x768/733636614.jpg?k=03bad47c293ab9059fe10296d2aeaacc6e113c36d213a662881ef11ed2086a2e&o=',
-  'https://cf.bstatic.com/xdata/images/hotel/max1024x768/145311438.jpg?k=3d59d88d097928e198f11275595b26b076c8af604997dfb2046ffac39e9d6ab3&o='
+  '/images/rooms/doble-privado-1.jpg',
+  '/images/rooms/triple-privado-1.jpg',
+  '/images/rooms/cuadruple-privado-1.jpg',
+  '/images/rooms/hostal-common-4.jpg'
 ];
 
 const WhatsAppIcon = ({ className = "h-5 w-5" }: { className?: string }) => (

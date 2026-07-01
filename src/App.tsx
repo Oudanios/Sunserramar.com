@@ -104,7 +104,7 @@ interface HeroSlide {
 
 const HERO_SLIDES: HeroSlide[] = [
   {
-    image: 'https://cf.bstatic.com/xdata/images/hotel/max1024x768/145477620.jpg?k=480dc02a27c144529eb1a60903829c4c43afc94c29f1d53044bf063fa6e0f1f3&o=',
+    image: '/images/rooms/hostal-common-1.jpg',
     taglineEs: 'El encanto familiar de siempre',
     taglineEn: 'Traditional family guest experience',
     taglineFr: 'Le charme familial de toujours',
@@ -119,7 +119,7 @@ const HERO_SLIDES: HeroSlide[] = [
     descAr: 'غرف نوم نظيفة ومريحة على بُعد 3 دقائق فقط من محطة القطار مع ترحيب عائلي لا مثيل له في أرّويو دي لا مييل.'
   },
   {
-    image: 'https://assets.simpleviewinc.com/simpleview/image/upload/c_fill,f_avif,h_827,q_65,w_1919/v1/clients/benalmadena/ChatGPT_Image_7_abr_2026_23_45_03_484e1544-f6b8-465b-b0e4-398abda27ce4.png',
+    image: '/images/rooms/hostal-common-2.jpg',
     taglineEs: 'Playas de ensueño y Puerto Marina',
     taglineEn: 'Scenic harbor and beaches',
     taglineFr: 'Plages de rêve et Puerto Marina',
@@ -134,7 +134,7 @@ const HERO_SLIDES: HeroSlide[] = [
     descAr: 'نزهة قصيرة مشياً على الأقدام تفصلك عن شواطئ بينالمادينا الذهبية، وممراتها البحرية، ومعمار ميناء بورتو مارينا الفريد.'
   },
   {
-    image: 'https://cf.bstatic.com/xdata/images/hotel/max1024x768/145303248.jpg?k=5fbef33b7c58fee5b15b1cc2bca107fca5c96a551b08ccdc8eccac4a4c4bc78e&o=',
+    image: '/images/rooms/hostal-common-3.jpg',
     taglineEs: 'Confort y espacios compartidos reales',
     taglineEn: 'Our authentic guest lounge & kitchen',
     taglineFr: 'Confort & espaces partagés réels',
@@ -158,6 +158,8 @@ const LANGUAGES = [
 ] as const;
 
 export default function App() {
+  const isLegacyExternalImage = (url: string) => /cf\.bstatic\.com|serramarbenalmadena\.com|assets\.simpleviewinc\.com/i.test(url || '');
+
   // Toast state for replacing alerts
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const showToast = (text: string, type: 'success' | 'error' = 'error') => {
@@ -381,27 +383,53 @@ export default function App() {
 
     const savedHeroSlides = localStorage.getItem('serramar_hero_slides');
     if (savedHeroSlides) {
-      setHeroSlides(JSON.parse(savedHeroSlides));
+      const parsedSlides = JSON.parse(savedHeroSlides);
+      const hasLegacyExternal = Array.isArray(parsedSlides) && parsedSlides.some((slide: any) => isLegacyExternalImage(slide?.image));
+      if (hasLegacyExternal) {
+        setHeroSlides(HERO_SLIDES);
+        localStorage.setItem('serramar_hero_slides', JSON.stringify(HERO_SLIDES));
+      } else {
+        setHeroSlides(parsedSlides);
+      }
     } else {
       setHeroSlides(HERO_SLIDES);
     }
 
     const savedWelcomeImage = localStorage.getItem('serramar_welcome_image');
     if (savedWelcomeImage) {
-      setWelcomeImage(savedWelcomeImage);
+      if (isLegacyExternalImage(savedWelcomeImage)) {
+        const fallbackWelcome = '/images/rooms/hostal-common-3.jpg';
+        setWelcomeImage(fallbackWelcome);
+        localStorage.setItem('serramar_welcome_image', fallbackWelcome);
+      } else {
+        setWelcomeImage(savedWelcomeImage);
+      }
     } else {
-      setWelcomeImage('https://cf.bstatic.com/xdata/images/hotel/max1024x768/145303248.jpg?k=5fbef33b7c58fee5b15b1cc2bca107fca5c96a551b08ccdc8eccac4a4c4bc78e&o=');
+      setWelcomeImage('/images/rooms/hostal-common-3.jpg');
     }
 
     const savedUpgradeImages = localStorage.getItem('serramar_upgrade_images');
     if (savedUpgradeImages) {
-      setUpgradeImages(JSON.parse(savedUpgradeImages));
+      const parsedUpgradeImages = JSON.parse(savedUpgradeImages);
+      const hasLegacyExternal = Array.isArray(parsedUpgradeImages) && parsedUpgradeImages.some((url: string) => isLegacyExternalImage(url));
+      if (hasLegacyExternal) {
+        const fallbackUpgradeImages = [
+          '/images/rooms/doble-privado-1.jpg',
+          '/images/rooms/triple-privado-1.jpg',
+          '/images/rooms/cuadruple-privado-1.jpg',
+          '/images/rooms/hostal-common-4.jpg'
+        ];
+        setUpgradeImages(fallbackUpgradeImages);
+        localStorage.setItem('serramar_upgrade_images', JSON.stringify(fallbackUpgradeImages));
+      } else {
+        setUpgradeImages(parsedUpgradeImages);
+      }
     } else {
       setUpgradeImages([
-        'https://cf.bstatic.com/xdata/images/hotel/max1024x768/145303248.jpg?k=5fbef33b7c58fee5b15b1cc2bca107fca5c96a551b08ccdc8eccac4a4c4bc78e&o=',
-        'https://cf.bstatic.com/xdata/images/hotel/max1024x768/733636585.jpg?k=a788657d55cfe2d19d472e884d45d61349c6bd1e7b0727de61c724228ecf0f62&o=',
-        'https://cf.bstatic.com/xdata/images/hotel/max1024x768/733636614.jpg?k=03bad47c293ab9059fe10296d2aeaacc6e113c36d213a662881ef11ed2086a2e&o=',
-        'https://cf.bstatic.com/xdata/images/hotel/max1024x768/145311438.jpg?k=3d59d88d097928e198f11275595b26b076c8af604997dfb2046ffac39e9d6ab3&o='
+        '/images/rooms/doble-privado-1.jpg',
+        '/images/rooms/triple-privado-1.jpg',
+        '/images/rooms/cuadruple-privado-1.jpg',
+        '/images/rooms/hostal-common-4.jpg'
       ]);
     }
 
@@ -909,7 +937,7 @@ export default function App() {
       type: 'doble',
       bathroom: 'private',
       maxGuests: 4,
-      image: upgradeImages[0] || 'https://cf.bstatic.com/xdata/images/hotel/max1024x768/145303248.jpg',
+      image: upgradeImages[0] || '/images/rooms/doble-privado-1.jpg',
       amenities: ['Wifi', 'TV', 'Air Conditioning', 'Kitchen'],
       amenitiesEn: ['Wifi', 'TV', 'Air Conditioning', 'Kitchen'],
       images: upgradeImages
@@ -1826,7 +1854,7 @@ export default function App() {
                 <div className="lg:col-span-5 relative mt-6 lg:mt-0">
                   <div className="aspect-[4/3] bg-slate-100 rounded-3xl overflow-hidden shadow-2xl border-4 border-white transform hover:scale-102 transition duration-500">
                     <img 
-                      src={welcomeImage || "https://cf.bstatic.com/xdata/images/hotel/max1024x768/145303248.jpg?k=5fbef33b7c58fee5b15b1cc2bca107fca5c96a551b08ccdc8eccac4a4c4bc78e&o="} 
+                      src={welcomeImage || '/images/rooms/hostal-common-3.jpg'} 
                       alt="Cozy sun-drenched private double bedroom setup"
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
@@ -2769,7 +2797,7 @@ export default function App() {
               </div>
               <div className="md:w-1/2 flex justify-end">
                 <img 
-                  src="https://www.serramarbenalmadena.com/wp-content/uploads/salon-cucina-serramar-benalmadena-3.jpg" 
+                  src="/images/rooms/hostal-common-4.jpg" 
                   alt="Hostal Serramar Interior" 
                   className="rounded-xl object-cover h-64 w-full md:w-4/5 shadow-sm sepia-[0.15]" 
                 />

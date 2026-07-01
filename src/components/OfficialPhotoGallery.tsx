@@ -23,167 +23,125 @@ interface GalleryImage {
 
 const GALLERY_IMAGES: GalleryImage[] = [
   // Private Bathroom Rooms
-  { 
-    url: 'https://cf.bstatic.com/xdata/images/hotel/max1024x768/145303248.jpg?k=5fbef33b7c58fee5b15b1cc2bca107fca5c96a551b08ccdc8eccac4a4c4bc78e&o=', 
-    category: 'private', 
-    titleEs: 'Habitación Doble de Luxe con Baño Completo Integrado', 
-    titleEn: 'DeLuxe Double Room with Integrated Full Bathroom' 
+  {
+    url: '/images/rooms/doble-privado-1.jpg',
+    category: 'private',
+    titleEs: 'Habitación Doble con Baño Privado',
+    titleEn: 'Double Room with Private Bathroom'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/habitacion-bano-privado-serramar-benalmadena.jpg', 
-    category: 'private', 
-    titleEs: 'Habitación Doble Clásica con Baño Privado', 
-    titleEn: 'Classic Double Room with Private Bathroom' 
+  {
+    url: '/images/rooms/doble-privado-5.jpg',
+    category: 'private',
+    titleEs: 'Detalle Habitación Doble con Cama de Matrimonio',
+    titleEn: 'Double Room Detail with Full Bed'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-1.jpg', 
-    category: 'private', 
-    titleEs: 'Detalle de Cama Doble con Climatización', 
-    titleEn: 'Cozy Double Bed with Air Conditioning' 
+  {
+    url: '/images/rooms/triple-privado-1.jpg',
+    category: 'private',
+    titleEs: 'Habitación Triple con Baño Privado',
+    titleEn: 'Triple Room with Private Bathroom'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-2.jpg', 
-    category: 'private', 
-    titleEs: 'Habitación Doble con Mobiliario de Pino', 
-    titleEn: 'Double Bed with Spanish Pine Wood Furniture' 
+  {
+    url: '/images/rooms/triple-privado-4.jpg',
+    category: 'private',
+    titleEs: 'Distribución de Camas en Habitación Triple',
+    titleEn: 'Bed Layout in Triple Room'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-4.jpg', 
-    category: 'private', 
-    titleEs: 'Habitación Triple con Camas Individuales', 
-    titleEn: 'Triple Room with Single Beds & Pine Frame' 
+  {
+    url: '/images/rooms/cuadruple-privado-1.jpg',
+    category: 'private',
+    titleEs: 'Habitación Familiar Cuádruple',
+    titleEn: 'Family Quadruple Room'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-5.jpg', 
-    category: 'private', 
-    titleEs: 'Distribución Luminosa en Habitación Triple', 
-    titleEn: 'Bright Bedding Layout in Triple Room' 
+  {
+    url: '/images/rooms/cuadruple-privado-4.jpg',
+    category: 'private',
+    titleEs: 'Dormitorio Familiar Amplio con Baño',
+    titleEn: 'Spacious Family Bedroom with Bathroom'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-6.jpg', 
-    category: 'private', 
-    titleEs: 'Detalle Rústico de Cabeceros de Madera', 
-    titleEn: 'Rustic Wood Headboard Craftsmanship' 
-  },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-7.jpg', 
-    category: 'private', 
-    titleEs: 'Habitación Familiar Cuádruple Espaciosa', 
-    titleEn: 'Spacious Family Quadruple Room' 
-  },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-17.jpg', 
-    category: 'private', 
-    titleEs: 'Dormitorio Familiar con Baño Completo', 
-    titleEn: 'Family Bedroom with Full Executive Bathroom' 
+  {
+    url: '/images/rooms/twin-privado-2.jpg',
+    category: 'private',
+    titleEs: 'Habitación Doble con Camas Separadas',
+    titleEn: 'Twin Bed Private Room'
   },
 
   // Shared Bathroom Rooms
-  { 
-    url: 'https://cf.bstatic.com/xdata/images/hotel/max1024x768/733661797.jpg?k=8ac2f39a4cf8979cefa54ab1d5e19acfe31df654609e2c09619a665c54aaeaf2&o=', 
-    category: 'shared', 
-    titleEs: 'Habitación de Dos Camas Económica (Vista de Entrada)', 
-    titleEn: 'Budget Twin Beds Room (Entrance Angle View)' 
+  {
+    url: '/images/rooms/doble-compartido-1.png',
+    category: 'shared',
+    titleEs: 'Habitación Doble Económica',
+    titleEn: 'Budget Double Room'
   },
-  { 
-    url: 'https://cf.bstatic.com/xdata/images/hotel/max1024x768/733639422.jpg?k=c62df67f362a12b949fec76c379928b91b98d7db0c02819e8e0c8b0efab9ab18&o=', 
-    category: 'shared', 
-    titleEs: 'Habitación de Dos Camas con Ventilador y Climatización', 
-    titleEn: 'Budget Twin Beds Room with Ceiling Fan & AC' 
+  {
+    url: '/images/rooms/doble-compartido-3.jpg',
+    category: 'shared',
+    titleEs: 'Habitación Doble con Baño Compartido',
+    titleEn: 'Double Room with Shared Bathroom'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/habitacion-bano-compartito-serramar-benalmadena.jpg', 
-    category: 'shared', 
-    titleEs: 'Habitación Doble Económica (Baño Compartido)', 
-    titleEn: 'Budget Double Room (Shared Bathroom)' 
+  {
+    url: '/images/rooms/individual-compartido-1.png',
+    category: 'shared',
+    titleEs: 'Habitación Individual Económica',
+    titleEn: 'Budget Single Room'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/habitacion-economica-bano-compartido-serramar-benalmadena.jpg', 
-    category: 'shared', 
-    titleEs: 'Habitación Individual Económica y Silenciosa', 
-    titleEn: 'Budget Single Room (Shared Bathroom)' 
-  },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-10.jpg', 
-    category: 'shared', 
-    titleEs: 'Habitación Doble para Máximo Ahorro con Ventana', 
-    titleEn: 'Budget Double Room with Bright Ventilation' 
-  },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-11.jpg', 
-    category: 'shared', 
-    titleEs: 'Camas Confortables en Habitación Económica', 
-    titleEn: 'Comfortable Twin Bedding in Budget Room' 
-  },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-13.jpg', 
-    category: 'shared', 
-    titleEs: 'Sencillez y Confort para Viajeros Solitarios', 
-    titleEn: 'Simplicity and Comfort for Solo Travelers' 
-  },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-15.jpg', 
-    category: 'shared', 
-    titleEs: 'Escritorio Auxiliar y Toallas Incluidas en Estancia', 
-    titleEn: 'Side Table Desk & Fresh Towels Provided' 
-  },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-16.jpg', 
-    category: 'shared', 
-    titleEs: 'Decoración Sencilla con Suelos de Baldosa', 
-    titleEn: 'Simple Decor with Traditional Cool Tiled Floors' 
+  {
+    url: '/images/rooms/individual-compartido-3.png',
+    category: 'shared',
+    titleEs: 'Habitación Individual con Zona de Trabajo',
+    titleEn: 'Single Room with Work Area'
   },
 
   // Common Areas
-  { 
-    url: 'https://cf.bstatic.com/xdata/images/hotel/max1024x768/145477617.jpg?k=7efe706798a3d27a119c97defeb85d244a514ba000c5084b9c3586a095e90608&o=', 
-    category: 'common', 
-    titleEs: 'Comedor y Salón de Reuniones para Huéspedes', 
-    titleEn: 'Cozy Guest Dining Lounge & Shared Kitchen Hall' 
+  {
+    url: '/images/rooms/hostal-common-1.jpg',
+    category: 'common',
+    titleEs: 'Zona Común y Comedor para Huéspedes',
+    titleEn: 'Common Lounge and Dining Area'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/salon-cucina-serramar-benalmadena-1.jpg', 
-    category: 'common', 
-    titleEs: 'Salón de Reuniones y Estar de Invitados', 
-    titleEn: 'Comfy Guest Lounging and TV Living Room' 
+  {
+    url: '/images/rooms/hostal-common-3.jpg',
+    category: 'common',
+    titleEs: 'Cocina Compartida Totalmente Equipada',
+    titleEn: 'Fully Equipped Shared Kitchen'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/salon-cucina-serramar-benalmadena-2.jpg', 
-    category: 'common', 
-    titleEs: 'Cocina de Uso Común Totalmente Equipada', 
-    titleEn: 'Fully Equipped Shared Kitchen & Appliances' 
+  {
+    url: '/images/rooms/hostal-common-5.jpg',
+    category: 'common',
+    titleEs: 'Acceso y Pasillos Interiores',
+    titleEn: 'Interior Access and Corridors'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/salon-cucina-serramar-benalmadena-3.jpg', 
-    category: 'common', 
-    titleEs: 'Zona de Cocina con Café y Té Gratuito', 
-    titleEn: 'Office Area with Free Guest Coffee & Tea Maker' 
+  {
+    url: '/images/rooms/hostal-common-8.jpg',
+    category: 'common',
+    titleEs: 'Detalle de Espacios Comunes',
+    titleEn: 'Common Space Details'
   },
 
   // Exterior & Details
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena.jpg', 
-    category: 'exterior', 
-    titleEs: 'Fachada y Entrada Principal de Hostal Serramar', 
-    titleEn: 'Hostal Serramar Entrance Plaza & Exterior Facade' 
+  {
+    url: '/images/rooms/hostal-common-2.jpg',
+    category: 'exterior',
+    titleEs: 'Entrada Principal y Recepción',
+    titleEn: 'Main Entrance and Reception'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-3.jpg', 
-    category: 'exterior', 
-    titleEs: 'Pasillos Comunes Decorados al Estilo Andaluz', 
-    titleEn: 'Guesthouse Corridors Decorated in Andalusian Style' 
+  {
+    url: '/images/rooms/hostal-common-4.jpg',
+    category: 'exterior',
+    titleEs: 'Escaleras y Conexión entre Plantas',
+    titleEn: 'Stairs and Floor Access'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-8.jpg', 
-    category: 'exterior', 
-    titleEs: 'Armario de Madera de Pino Mallorquina Rústica', 
-    titleEn: 'Traditional Pine Wood Louvered Wardrobes' 
+  {
+    url: '/images/rooms/hostal-common-6.jpg',
+    category: 'exterior',
+    titleEs: 'Zona de Paso y Fachada Interior',
+    titleEn: 'Walkway and Interior Facade'
   },
-  { 
-    url: 'https://www.serramarbenalmadena.com/wp-content/uploads/serramar-benalmadena-12.jpg', 
-    category: 'exterior', 
-    titleEs: 'Detalle de Planta de Interior y Luminosidad', 
-    titleEn: 'Vibrant Houseplant and Sunlit Window Corner' 
+  {
+    url: '/images/rooms/hostal-common-7.jpg',
+    category: 'exterior',
+    titleEs: 'Detalle Arquitectónico del Hostal',
+    titleEn: 'Hostal Architectural Detail'
   }
 ];
 
