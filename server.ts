@@ -183,7 +183,7 @@ async function sendViaResend(to: string, subject: string, html: string, replyTo?
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: `Sun Serramar <${process.env.SMTP_USER || 'contact@sunserramar.com'}>`,
+        from: `Sun Serramar <onboarding@resend.dev>`,
         to: [to],
         subject,
         html,
