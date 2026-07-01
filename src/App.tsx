@@ -57,7 +57,7 @@ import { Room, Review, Booking, AnnouncementConfig, CustomPage, WebsiteSettings 
 import AIConcierge from './components/AIConcierge';
 import RoomCard from './components/RoomCard';
 import PremiumWelcomeUpgrade from './components/PremiumWelcomeUpgrade';
-import OfficialPhotoGallery from './components/OfficialPhotoGallery';
+import OfficialPhotoGallery, { DEFAULT_GALLERY_IMAGES, GalleryImage } from './components/OfficialPhotoGallery';
 import FaqSection from './components/FaqSection';
 import { LegalAvisoContent, LegalPrivacidadContent, LegalCookiesContent, LegalReservasContent } from './components/LegalContent';
 
@@ -206,6 +206,8 @@ export default function App() {
   const [heroSlides, setHeroSlides] = useState<any[]>([]);
   const [welcomeImage, setWelcomeImage] = useState<string>('');
   const [upgradeImages, setUpgradeImages] = useState<string[]>([]);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [hospitalityImage, setHospitalityImage] = useState<string>('/images/rooms/hostal-common-4.jpg');
 
   // Hero slider active slide index
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
@@ -433,6 +435,29 @@ export default function App() {
       ]);
     }
 
+    const savedGalleryImages = localStorage.getItem('serramar_gallery_images');
+    if (savedGalleryImages) {
+      try {
+        const parsedGalleryImages = JSON.parse(savedGalleryImages);
+        if (Array.isArray(parsedGalleryImages) && parsedGalleryImages.length > 0) {
+          setGalleryImages(parsedGalleryImages);
+        } else {
+          setGalleryImages(DEFAULT_GALLERY_IMAGES);
+        }
+      } catch {
+        setGalleryImages(DEFAULT_GALLERY_IMAGES);
+      }
+    } else {
+      setGalleryImages(DEFAULT_GALLERY_IMAGES);
+    }
+
+    const savedHospitalityImage = localStorage.getItem('serramar_hospitality_image');
+    if (savedHospitalityImage) {
+      setHospitalityImage(savedHospitalityImage);
+    } else {
+      setHospitalityImage('/images/rooms/hostal-common-4.jpg');
+    }
+
     return () => {
       window.removeEventListener('hashchange', handleUrlPath);
       window.removeEventListener('popstate', handleUrlPath);
@@ -652,6 +677,26 @@ export default function App() {
     } catch (err) {
       console.error('Failed to persist upgrade images:', err);
       showToast(lang === 'es' ? 'No se pudieron guardar las imágenes de galería. Usa enlaces externos para imágenes pesadas.' : 'Could not save gallery images. Use external URLs for heavy images.', 'error');
+    }
+  };
+
+  const saveGalleryImagesToStorage = (updatedGalleryImages: GalleryImage[]) => {
+    setGalleryImages(updatedGalleryImages);
+    try {
+      localStorage.setItem('serramar_gallery_images', JSON.stringify(updatedGalleryImages));
+    } catch (err) {
+      console.error('Failed to persist gallery images:', err);
+      showToast(lang === 'es' ? 'No se pudo guardar la galería oficial.' : 'Could not save official gallery images.', 'error');
+    }
+  };
+
+  const saveHospitalityImageToStorage = (url: string) => {
+    setHospitalityImage(url);
+    try {
+      localStorage.setItem('serramar_hospitality_image', url);
+    } catch (err) {
+      console.error('Failed to persist hospitality image:', err);
+      showToast(lang === 'es' ? 'No se pudo guardar la imagen de hospitalidad.' : 'Could not save hospitality image.', 'error');
     }
   };
 
@@ -2628,7 +2673,7 @@ export default function App() {
               </p>
             </div>
 
-            <OfficialPhotoGallery lang={lang} />
+            <OfficialPhotoGallery lang={lang} customImages={galleryImages} />
           </motion.div>
         )}
 
@@ -2797,7 +2842,7 @@ export default function App() {
               </div>
               <div className="md:w-1/2 flex justify-end">
                 <img 
-                  src="/images/rooms/hostal-common-4.jpg" 
+                  src={hospitalityImage || '/images/rooms/hostal-common-4.jpg'} 
                   alt="Hostal Serramar Interior" 
                   className="rounded-xl object-cover h-64 w-full md:w-4/5 shadow-sm sepia-[0.15]" 
                 />
@@ -4573,6 +4618,8 @@ export default function App() {
                 heroSlides={slidesToUse}
                 welcomeImage={welcomeImage}
                 upgradeImages={upgradeImages}
+                galleryImages={galleryImages}
+                hospitalityImage={hospitalityImage}
                 onUpdateRooms={saveRoomsToStorage}
                 onUpdateBookings={saveBookingsToStorage}
                 onUpdateReviews={saveReviewsToStorage}
@@ -4582,6 +4629,8 @@ export default function App() {
                 onUpdateHeroSlides={saveHeroSlidesToStorage}
                 onUpdateWelcomeImage={saveWelcomeImageToStorage}
                 onUpdateUpgradeImages={saveUpgradeImagesToStorage}
+                onUpdateGalleryImages={saveGalleryImagesToStorage}
+                onUpdateHospitalityImage={saveHospitalityImageToStorage}
                 onClose={() => setActiveTab('inicio')}
                 showToast={showToast}
               />

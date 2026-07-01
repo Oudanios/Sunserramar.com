@@ -25,9 +25,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
-  Mail
+  Mail,
+  Camera
 } from 'lucide-react';
 import { Room, Booking, Review, AnnouncementConfig, CustomPage, WebsiteSettings } from '../types';
+import { GalleryImage } from './OfficialPhotoGallery';
 
 interface AdminPanelProps {
   lang: 'es' | 'en' | 'fr' | 'ar';
@@ -50,6 +52,10 @@ interface AdminPanelProps {
   onUpdateWelcomeImage: (url: string) => void;
   upgradeImages: string[];
   onUpdateUpgradeImages: (updated: string[]) => void;
+  galleryImages: GalleryImage[];
+  onUpdateGalleryImages: (updated: GalleryImage[]) => void;
+  hospitalityImage: string;
+  onUpdateHospitalityImage: (url: string) => void;
   showToast: (msg: string, type?: 'success' | 'error') => void;
 }
 
@@ -74,6 +80,10 @@ export default function AdminPanel({
   onUpdateWelcomeImage,
   upgradeImages,
   onUpdateUpgradeImages,
+  galleryImages,
+  onUpdateGalleryImages,
+  hospitalityImage,
+  onUpdateHospitalityImage,
   showToast
 }: AdminPanelProps) {
   // Navigation
@@ -180,6 +190,8 @@ export default function AdminPanel({
   const [draftHeroSlides, setDraftHeroSlides] = useState<any[]>(heroSlides || []);
   const [draftUpgradeImages, setDraftUpgradeImages] = useState<string[]>(upgradeImages || []);
   const [draftWelcomeImage, setDraftWelcomeImage] = useState<string>(welcomeImage || '');
+  const [draftGalleryImages, setDraftGalleryImages] = useState<GalleryImage[]>(galleryImages || []);
+  const [draftHospitalityImage, setDraftHospitalityImage] = useState<string>(hospitalityImage || '');
   const [draftRoomMedia, setDraftRoomMedia] = useState<Record<string, { image: string; images: string[] }>>(buildRoomMediaDraft(rooms));
   const [hasUnsavedMediaChanges, setHasUnsavedMediaChanges] = useState(false);
 
@@ -187,9 +199,11 @@ export default function AdminPanel({
     setDraftHeroSlides(heroSlides || []);
     setDraftUpgradeImages(upgradeImages || []);
     setDraftWelcomeImage(welcomeImage || '');
+    setDraftGalleryImages(galleryImages || []);
+    setDraftHospitalityImage(hospitalityImage || '');
     setDraftRoomMedia(buildRoomMediaDraft(rooms));
     setHasUnsavedMediaChanges(false);
-  }, [heroSlides, upgradeImages, welcomeImage, rooms]);
+  }, [heroSlides, upgradeImages, welcomeImage, galleryImages, hospitalityImage, rooms]);
 
   const markMediaDirty = () => setHasUnsavedMediaChanges(true);
 
@@ -197,6 +211,8 @@ export default function AdminPanel({
     setDraftHeroSlides(heroSlides || []);
     setDraftUpgradeImages(upgradeImages || []);
     setDraftWelcomeImage(welcomeImage || '');
+    setDraftGalleryImages(galleryImages || []);
+    setDraftHospitalityImage(hospitalityImage || '');
     setDraftRoomMedia(buildRoomMediaDraft(rooms));
     setHasUnsavedMediaChanges(false);
     showToast(lang === 'es' ? 'Cambios descartados.' : 'Changes discarded.', 'success');
@@ -206,6 +222,8 @@ export default function AdminPanel({
     onUpdateHeroSlides(draftHeroSlides);
     onUpdateUpgradeImages(draftUpgradeImages);
     onUpdateWelcomeImage(draftWelcomeImage);
+    onUpdateGalleryImages(draftGalleryImages);
+    onUpdateHospitalityImage(draftHospitalityImage);
     const updatedRooms = rooms.map((room) => {
       const draft = draftRoomMedia[room.id];
       if (!draft) return room;
@@ -2347,12 +2365,213 @@ export default function AdminPanel({
               </div>
             </div>
 
-            {/* SECTION 4: EDIT IMAGES BY ROOM */}
+            {/* SECTION 4: OFFICIAL GALLERY IMAGES */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-150 shadow-sm space-y-6 text-left">
+              <div className="flex justify-between items-center border-b pb-3">
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                    <Eye className="h-4 w-4 text-sky-600" />
+                    {lang === 'es' ? '4. Galería Oficial (Página de Galería)' : '4. Official Gallery (Gallery Page)'}
+                  </h4>
+                  <p className="text-slate-400 text-[10px] mt-1">
+                    {lang === 'es'
+                      ? 'Edita todas las fotos de la galería pública: URL, categoría y títulos.'
+                      : 'Edit all public gallery pictures: URL, category, and titles.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftGalleryImages([
+                      ...draftGalleryImages,
+                      {
+                        url: '/images/rooms/hostal-common-1.jpg',
+                        category: 'common',
+                        titleEs: 'Nueva Imagen',
+                        titleEn: 'New Image'
+                      }
+                    ]);
+                    markMediaDirty();
+                  }}
+                  className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-1.5 px-3.5 rounded-lg flex items-center gap-1.5 transition text-[10.5px] uppercase cursor-pointer shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5 font-bold" />
+                  <span>{lang === 'es' ? 'Añadir Foto' : 'Add Photo'}</span>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {draftGalleryImages.map((img, idx) => (
+                  <div key={`${img.url}-${idx}`} className="border border-slate-150 rounded-xl p-4 bg-slate-50/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-mono font-bold text-[10px] text-slate-400">{lang === 'es' ? 'ELEMENTO' : 'ITEM'} #{idx + 1}</p>
+                      {draftGalleryImages.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDraftGalleryImages(draftGalleryImages.filter((_, gIdx) => gIdx !== idx));
+                            markMediaDirty();
+                          }}
+                          className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 p-1.5 rounded-lg transition shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+                      <div className="md:col-span-1 aspect-[4/3] rounded-lg overflow-hidden border bg-slate-100">
+                        <img src={img.url} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                      </div>
+
+                      <div className="md:col-span-4 space-y-2">
+                        <input
+                          type="text"
+                          value={img.url}
+                          onChange={(e) => {
+                            const updated = [...draftGalleryImages];
+                            updated[idx] = { ...img, url: e.target.value };
+                            setDraftGalleryImages(updated);
+                            markMediaDirty();
+                          }}
+                          className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs"
+                          placeholder="/images/rooms/example.jpg"
+                        />
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <select
+                            value={img.category}
+                            onChange={(e) => {
+                              const updated = [...draftGalleryImages];
+                              updated[idx] = { ...img, category: e.target.value as GalleryImage['category'] };
+                              setDraftGalleryImages(updated);
+                              markMediaDirty();
+                            }}
+                            className="bg-white border border-slate-200 rounded-lg p-2 text-xs"
+                          >
+                            <option value="private">{lang === 'es' ? 'Privado' : 'Private'}</option>
+                            <option value="shared">{lang === 'es' ? 'Compartido' : 'Shared'}</option>
+                            <option value="common">{lang === 'es' ? 'Zonas comunes' : 'Common'}</option>
+                            <option value="exterior">{lang === 'es' ? 'Exterior' : 'Exterior'}</option>
+                          </select>
+                          <input
+                            type="text"
+                            value={img.titleEs}
+                            onChange={(e) => {
+                              const updated = [...draftGalleryImages];
+                              updated[idx] = { ...img, titleEs: e.target.value };
+                              setDraftGalleryImages(updated);
+                              markMediaDirty();
+                            }}
+                            className="bg-white border border-slate-200 rounded-lg p-2 text-xs"
+                            placeholder={lang === 'es' ? 'Título ES' : 'Spanish title'}
+                          />
+                          <input
+                            type="text"
+                            value={img.titleEn}
+                            onChange={(e) => {
+                              const updated = [...draftGalleryImages];
+                              updated[idx] = { ...img, titleEn: e.target.value };
+                              setDraftGalleryImages(updated);
+                              markMediaDirty();
+                            }}
+                            className="bg-white border border-slate-200 rounded-lg p-2 text-xs"
+                            placeholder={lang === 'es' ? 'Título EN' : 'English title'}
+                          />
+                        </div>
+
+                        <label className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-1 px-3 rounded text-[9.5px] cursor-pointer transition uppercase text-center block w-full md:w-fit">
+                          <span>{lang === 'es' ? '📁 Subir Archivo' : '📁 Upload Photo'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  if (event.target?.result) {
+                                    const updated = [...draftGalleryImages];
+                                    updated[idx] = { ...img, url: event.target.result as string };
+                                    setDraftGalleryImages(updated);
+                                    markMediaDirty();
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* SECTION 5: HOSPITALITY IMAGE */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-150 shadow-sm space-y-4 text-left">
+              <div>
+                <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                  <Camera className="h-4 w-4 text-sky-600" />
+                  {lang === 'es' ? '5. Imagen de "El arte de la hospitalidad"' : '5. "The art of hospitality" image'}
+                </h4>
+                <p className="text-slate-400 text-[10px] mt-0.5">
+                  {lang === 'es'
+                    ? 'Esta es la imagen del bloque final de Servicios.'
+                    : 'This is the image used in the final Services section block.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
+                <div className="aspect-[4/3] rounded-2xl bg-slate-100 overflow-hidden border shadow-sm">
+                  <img src={draftHospitalityImage} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                </div>
+
+                <div className="md:col-span-3 space-y-3">
+                  <input
+                    type="text"
+                    value={draftHospitalityImage}
+                    onChange={(e) => {
+                      setDraftHospitalityImage(e.target.value);
+                      markMediaDirty();
+                    }}
+                    className="w-full bg-white border border-slate-250 rounded-xl p-2.5 font-mono text-[10.5px]"
+                    placeholder="/images/rooms/hostal-common-4.jpg"
+                  />
+
+                  <label className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer transition uppercase inline-flex items-center gap-1.5 shadow-sm active:scale-95">
+                    <span>{lang === 'es' ? '📁 Subir Nueva Imagen' : '📁 Upload New Image'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            if (event.target?.result) {
+                              setDraftHospitalityImage(event.target.result as string);
+                              markMediaDirty();
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 6: EDIT IMAGES BY ROOM */}
             <div className="bg-white p-6 rounded-2xl border border-slate-150 shadow-sm space-y-6 text-left">
               <div>
                 <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
                   <Lock className="h-4 w-4 text-sky-600" />
-                  {lang === 'es' ? '4. Fotografías por Habitación' : '4. Images per Specific Room Accommodation'}
+                  {lang === 'es' ? '6. Fotografías por Habitación' : '6. Images per Specific Room Accommodation'}
                 </h4>
                 <p className="text-slate-400 text-[10px] mt-0.5">
                   {lang === 'es' ? 'Actualiza rápidamente la foto principal o las fotos secundarias de cada alojamiento.' : 'Update major cover or sub-gallery images across any room.'}

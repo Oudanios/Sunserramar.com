@@ -13,7 +13,7 @@ import {
   Camera
 } from 'lucide-react';
 
-interface GalleryImage {
+export interface GalleryImage {
   url: string;
   category: 'private' | 'shared' | 'common' | 'exterior';
   titleEs: string;
@@ -21,7 +21,7 @@ interface GalleryImage {
 }
 
 
-const GALLERY_IMAGES: GalleryImage[] = [
+export const DEFAULT_GALLERY_IMAGES: GalleryImage[] = [
   // Private Bathroom Rooms
   {
     url: '/images/rooms/doble-privado-1.jpg',
@@ -147,16 +147,18 @@ const GALLERY_IMAGES: GalleryImage[] = [
 
 interface OfficialPhotoGalleryProps {
   lang: 'es' | 'en';
+  customImages?: GalleryImage[];
 }
 
-export default function OfficialPhotoGallery({ lang }: OfficialPhotoGalleryProps) {
+export default function OfficialPhotoGallery({ lang, customImages }: OfficialPhotoGalleryProps) {
   const [activeCategory, setActiveCategory] = useState<'all' | 'private' | 'shared' | 'common' | 'exterior'>('all');
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const galleryImages = customImages && customImages.length > 0 ? customImages : DEFAULT_GALLERY_IMAGES;
 
   // Filter images based on active category
   const filteredImages = activeCategory === 'all' 
-    ? GALLERY_IMAGES 
-    : GALLERY_IMAGES.filter(img => img.category === activeCategory);
+    ? galleryImages 
+    : galleryImages.filter(img => img.category === activeCategory);
 
   const openLightbox = (imgUrl: string) => {
     // Find index in the filtered subset
@@ -204,7 +206,7 @@ export default function OfficialPhotoGallery({ lang }: OfficialPhotoGalleryProps
             <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
               <div className="rounded-2xl border border-slate-200 bg-white/90 px-3 py-2">
                 <p className="text-[10px] uppercase tracking-widest font-mono text-slate-500">{lang === 'es' ? 'Fotos' : 'Shots'}</p>
-                <p className="text-xl font-black text-slate-900">{GALLERY_IMAGES.length}</p>
+                <p className="text-xl font-black text-slate-900">{galleryImages.length}</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white/90 px-3 py-2">
                 <p className="text-[10px] uppercase tracking-widest font-mono text-slate-500">{lang === 'es' ? 'Categorías' : 'Categories'}</p>
