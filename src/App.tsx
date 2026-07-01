@@ -308,9 +308,6 @@ export default function App() {
   const [quickSearchRun, setQuickSearchRun] = useState(false);
   const [searchTab, setSearchTab] = useState<'pension' | 'habitaciones' | 'larga' | 'grupos'>('pension');
 
-  // Dynamic instantaneous Booking.com comparison rates
-  const [priceMode, setPriceMode] = useState<'direct' | 'booking'>('direct');
-
   // Premium location tab active guides
   const [locationSubTab, setLocationSubTab] = useState<'map' | 'transit' | 'car'>('map');
   const [addressCopied, setAddressCopied] = useState(false);
@@ -680,7 +677,7 @@ export default function App() {
 
   // Handle room booking calculation
   const getCalculatedPrice = (pricePerNight: number) => {
-    const activeRatePerNight = priceMode === 'direct' ? pricePerNight : Math.round(pricePerNight * 1.15);
+    const activeRatePerNight = pricePerNight;
     
     if (!checkIn || !checkOut) {
       return { 
@@ -2038,52 +2035,25 @@ export default function App() {
               </div>
             </div>
 
-            {/* Live Instant Rate Matcher & Dynamic Pricing Switcher */}
-            <div className="bg-gradient-to-r from-slate-900 to-sky-950 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4 md:space-y-0 md:flex md:items-center md:justify-between transition-all duration-300">
+            <div className="bg-gradient-to-r from-slate-900 to-sky-950 p-6 rounded-3xl border border-slate-800 shadow-xl">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="flex h-2 w-2 relative">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
-                  <span className="text-[10px] bg-sky-500/20 text-sky-305 border border-sky-500/30 px-2 py-0.5 rounded-md font-mono font-bold tracking-widest uppercase text-sky-300">
-                    {lang === 'es' ? 'CONEXIÓN BOOKING.COM EN VIVO' : 'LIVE BOOKING.COM CONNECTIVITY'}
+                  <span className="text-[10px] bg-sky-500/20 border border-sky-500/30 px-2 py-0.5 rounded-md font-mono font-bold tracking-widest uppercase text-sky-300">
+                    {lang === 'es' ? 'TARIFAS CLOUDBEDS EN TIEMPO REAL' : 'REAL-TIME CLOUDBEDS RATES'}
                   </span>
                 </div>
                 <h3 className="text-xl font-light text-white font-serif tracking-tight mt-1">
-                  {lang === 'es' ? 'Comparador y Actualizador de Tarifas al Instante' : 'Instant Pricing Engine & Rate Switcher'}
+                  {lang === 'es' ? 'Precios oficiales sincronizados' : 'Official synchronized pricing'}
                 </h3>
                 <p className="text-xs text-slate-350 leading-relaxed max-w-xl">
                   {lang === 'es'
-                    ? '¿Sabías que reservar directamente con nosotros te ahorra un 15% inmediato frente a Booking.com? Cambia de tarifa abajo y comprueba la diferencia de precio en tiempo real.'
-                    : 'Did you know reserving direct saves you 15% over Booking.com instantly? Toggle dynamic mode below and see prices update live.'}
+                    ? 'Mostramos tarifas sincronizadas con Cloudbeds. No se aplica descuento automático, solo promociones introducidas por el huésped.'
+                    : 'Rates are synced with Cloudbeds. No automatic discount is applied, only promotions entered by the guest.'}
                 </p>
-              </div>
-
-              {/* Toggle controls with premium style */}
-              <div className="bg-slate-950 p-1.5 rounded-2xl border border-slate-800 flex items-center shrink-0 shadow-inner">
-                <button
-                  onClick={() => setPriceMode('direct')}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl cursor-pointer transition-all ${
-                    priceMode === 'direct'
-                      ? 'bg-sky-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>🔥</span>
-                  <span>{lang === 'es' ? 'Web Directa (-15%)' : 'Direct Web Rate (-15%)'}</span>
-                </button>
-                <button
-                  onClick={() => setPriceMode('booking')}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl cursor-pointer transition-all ${
-                    priceMode === 'booking'
-                      ? 'bg-amber-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <span>🏨</span>
-                  <span>{lang === 'es' ? 'Booking.com (Normal)' : 'Booking.com (No Disc.)'}</span>
-                </button>
               </div>
             </div>
 
@@ -2153,7 +2123,6 @@ export default function App() {
                   key={room.id}
                   room={room}
                   lang={lang}
-                  priceMode={priceMode}
                   onBookDirect={(rm) => {
                     triggerQuickBooking(rm);
                     setTimeout(() => {

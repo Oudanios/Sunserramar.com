@@ -16,11 +16,10 @@ interface RoomCardProps {
   room: Room;
   lang: 'es' | 'en' | 'fr' | 'ar';
   onBookDirect: (room: Room) => void;
-  priceMode?: 'direct' | 'booking';
   key?: string | number;
 }
 
-export default function RoomCard({ room, lang, onBookDirect, priceMode = 'direct' }: RoomCardProps) {
+export default function RoomCard({ room, lang, onBookDirect }: RoomCardProps) {
   const [currentImgIdx, setCurrentImgIdx] = useState(0);
   const imagesList = room.images && room.images.length > 0 ? room.images : [room.image];
 
@@ -277,35 +276,14 @@ export default function RoomCard({ room, lang, onBookDirect, priceMode = 'direct
         {/* Pricing tag & Direct Button action */}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
           <div className="flex flex-col">
-            {priceMode === 'direct' ? (
-              <>
-                <span className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wide leading-none mb-1 flex items-center gap-1">
-                  <span>💰</span>
-                  <span>{t('Ahorro Directo Web', 'Direct Web Saving', 'Économie Directe Web', 'توفير الحجز المباشر')}</span>
-                  <span className="bg-emerald-100 text-emerald-800 text-[8px] font-bold px-1.5 py-0.5 rounded ml-0.5">
-                    -15%
-                  </span>
-                </span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-slate-900 transition-all duration-300">€{room.price}</span>
-                  <span className="text-xs text-slate-450 line-through decoration-slate-400 font-medium">€{Math.round(room.price * 1.15)}</span>
-                  <span className="text-xs text-slate-400 font-medium">/{t('noche', 'night', 'nuit', 'ليلة')}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <span className="text-[10px] text-amber-600 font-extrabold uppercase tracking-wide leading-none mb-1 flex items-center gap-1">
-                  <span>🏨</span>
-                  <span>{t('Tarifa Booking.com', 'Booking.com Standard Rate', 'Tarif Standard Booking.com', 'سعر بوكينج العادي')}</span>
-                </span>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black text-slate-900 text-amber-700 transition-all duration-300">
-                    €{Math.round(room.price * 1.15)}
-                  </span>
-                  <span className="text-xs text-slate-400 font-medium">/{t('noche', 'night', 'nuit', 'ليلة')}</span>
-                </div>
-              </>
-            )}
+            <span className="text-[10px] text-sky-700 font-extrabold uppercase tracking-wide leading-none mb-1 flex items-center gap-1">
+              <span>🏨</span>
+              <span>{t('Tarifa Cloudbeds', 'Cloudbeds Rate', 'Tarif Cloudbeds', 'سعر كلاودبدز')}</span>
+            </span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900 transition-all duration-300">€{room.price}</span>
+              <span className="text-xs text-slate-400 font-medium">/{t('noche', 'night', 'nuit', 'ليلة')}</span>
+            </div>
           </div>
 
           <button
