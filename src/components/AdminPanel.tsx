@@ -2012,8 +2012,8 @@ export default function AdminPanel({
             </h3>
             <p className="text-xs text-slate-350 max-w-2xl leading-relaxed">
               {lang === 'es' 
-                ? 'Conecte y administre de forma centralizada la base de datos MongoDB Atlas para reservas permanentes, la pasarela de pagos Stripe y el reenvío de correo directo para recibir copias instantáneas de todas las gestiones en contact@sunserramar.com.' 
-                : 'Connect and securely manage your persistent MongoDB Atlas database, Stripe Payment Intents gateway, and direct SMTP email notifications setup to receive immediate booking copies at contact@sunserramar.com.'}
+                ? 'Conecte y administre la base de datos MongoDB Atlas para reservas permanentes y el reenvío de correo directo. Las reservas y pagos se gestionan via Cloudbeds.' 
+                : 'Connect and manage MongoDB Atlas for persistent bookings and direct SMTP email notifications. Bookings and payments are handled via Cloudbeds.'}
             </p>
           </div>
 
@@ -2108,35 +2108,26 @@ export default function AdminPanel({
                     )}
                   </div>
 
-                  {/* Stripe payment widget */}
+                  {/* Cloudbeds booking widget */}
                   <div className="border border-slate-150 rounded-2xl p-4 space-y-3 bg-slate-50/20 text-left">
-                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-450 block">3. ONLINE PAYMENTS</span>
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-450 block">3. ONLINE BOOKINGS</span>
                     <div className="flex items-center gap-2">
-                      <div className="bg-emerald-50 p-2 rounded-xl text-emerald-600 border shrink-0">
+                      <div className="bg-sky-50 p-2 rounded-xl text-sky-600 border shrink-0">
                         <DollarSign className="h-5 w-5" />
                       </div>
                       <div className="text-left leading-normal">
-                        <p className="text-xs font-black text-slate-800">Stripe Gateway</p>
-                        <p className="text-[9px] text-slate-400 font-mono">{integrationStatus?.stripe?.mode || 'TEST SANDBOX'}</p>
+                        <p className="text-xs font-black text-slate-800">Cloudbeds PMS</p>
+                        <p className="text-[9px] text-slate-400 font-mono">PROPERTY eh45iO</p>
                       </div>
                     </div>
-                    {integrationStatus?.stripe?.configured ? (
-                      <div className="space-y-1">
-                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[9px] font-bold font-mono px-2 py-0.5 rounded-full border border-emerald-150">
-                          ● {integrationStatus.stripe.mode} READY
-                        </span>
-                        <p className="text-[8px] text-slate-400 font-medium">Checkout sessions synced successfully.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <span className="inline-flex items-center gap-1 bg-sky-50 text-sky-850 text-[9px] font-bold font-mono px-2 py-0.5 rounded-full border border-sky-150">
-                          ● SANDBOX INTACTO
-                        </span>
-                        <p className="text-[8px] text-slate-450 leading-snug">
-                          {lang === 'es' ? 'Simulación Stripe activa. Conecte su clave secreta (sk_).' : 'Simulated Checkout is live. Paste secret key is sk_.'}
-                        </p>
-                      </div>
-                    )}
+                    <div className="space-y-1">
+                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[9px] font-bold font-mono px-2 py-0.5 rounded-full border border-emerald-150">
+                        ● ACTIVE
+                      </span>
+                      <p className="text-[8px] text-slate-400 font-medium">
+                        {lang === 'es' ? 'Reservas gestionadas en Cloudbeds. Todos los botones redirigen al motor oficial.' : 'Bookings managed in Cloudbeds. All buttons redirect to the official booking engine.'}
+                      </p>
+                    </div>
                   </div>
 
                 </div>
@@ -2222,43 +2213,35 @@ export default function AdminPanel({
                 </form>
               </div>
 
-              {/* STRIPE USER INTEGRATION SETUP MANUAL */}
+              {/* BOOKING & EMAIL SETUP MANUAL */}
               <div className="bg-white p-6 rounded-3xl border border-slate-150 shadow-sm space-y-6 text-left">
                 <div>
                   <h4 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <DollarSign className="h-4.5 w-4.5 text-emerald-600 animate-pulse" />
-                    {lang === 'es' ? 'Configuración de Cobros en Stripe' : 'Onboarding Stripe Merchant Payments'}
+                    <DollarSign className="h-4.5 w-4.5 text-sky-600" />
+                    {lang === 'es' ? 'Configuracion de Reservas y Email' : 'Bookings & Email Setup'}
                   </h4>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    {lang === 'es' ? 'Cómo recibir verdaderas transferencias de reservas en tu cuenta.' : 'Receive actual payments from guests directly into your business bank account.'}
+                    {lang === 'es' ? 'Gestion de reservas via Cloudbeds y notificaciones por email SMTP.' : 'Booking management via Cloudbeds and SMTP email notifications.'}
                   </p>
                 </div>
 
-                <div className="space-y-4 text-xs text-slate-700 leading-relaxed font-sans">
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                    <span className="md:col-span-1 bg-emerald-50 text-emerald-800 border border-emerald-200 w-8 h-8 rounded-full flex items-center justify-center font-bold tracking-tight text-center shrink-0">1</span>
-                    <div className="md:col-span-11 leading-normal">
-                      <strong className="text-slate-900 block font-bold mb-0.5">{lang === 'es' ? 'Crear cuenta comercial en Stripe' : 'Register your Stripe Merchant Account'}</strong>
-                      <p>{lang === 'es' ? 'Acceda a dashboard.stripe.com y regístrese de forma gratuita. Rellene los datos de autónomo o empresa del hostal para habilitar cobros.' : 'Go to dashboard.stripe.com and complete your profile. Stripe acts as your secured cashier window for cards and Google Pay.'}</p>
+                  {/* Cloudbeds setup instructions */}
+                  <div className="space-y-4 text-xs text-slate-700 leading-relaxed font-sans">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      <span className="md:col-span-1 bg-sky-50 text-sky-800 border border-sky-200 w-8 h-8 rounded-full flex items-center justify-center font-bold tracking-tight text-center shrink-0">1</span>
+                      <div className="md:col-span-11 leading-normal">
+                        <strong className="text-slate-900 block font-bold mb-0.5">{lang === 'es' ? 'Reservas via Cloudbeds' : 'Bookings via Cloudbeds'}</strong>
+                        <p>{lang === 'es' ? 'Todos los botones de reserva redirigen directamente a https://us2.cloudbeds.com/en/reservation/eh45iO. No se procesan pagos en esta web.' : 'All booking buttons redirect directly to https://us2.cloudbeds.com/en/reservation/eh45iO. No payments are processed on this website.'}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      <span className="md:col-span-1 bg-sky-50 text-sky-800 border border-sky-200 w-8 h-8 rounded-full flex items-center justify-center font-bold tracking-tight text-center shrink-0">2</span>
+                      <div className="md:col-span-11 leading-normal">
+                        <strong className="text-slate-900 block font-bold mb-0.5">{lang === 'es' ? 'Notificaciones por email' : 'Email notifications'}</strong>
+                        <p>{lang === 'es' ? 'Configure SMTP_HOST, SMTP_USER y SMTP_PASSWORD en las variables de entorno de Render para recibir copias de reservas en contact@sunserramar.com.' : 'Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD in Render environment variables to receive booking copies at contact@sunserramar.com.'}</p>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                    <span className="md:col-span-1 bg-emerald-50 text-emerald-800 border border-emerald-200 w-8 h-8 rounded-full flex items-center justify-center font-bold tracking-tight text-center shrink-0">2</span>
-                    <div className="md:col-span-11 leading-normal">
-                      <strong className="text-slate-900 block font-bold mb-0.5">{lang === 'es' ? 'Configura tu Webhook de Retorno en Stripe' : 'Set Up your Payment confirmation Webhook'}</strong>
-                      <p>{lang === 'es' ? 'En configuraciones de Webhooks, añade la dirección HTTPS de sunserramar.com (ej. https://sunserramar.com/api/webhooks/stripe) para recibir confirmaciones de transacciones de forma segura y actualizar reservas.' : 'Configure Stripe to send webhook calls to your direct endpoint (e.g. /api/webhooks/stripe) to auto-transition reservation badges from "pending" to "confirmed" the millisecond a guest completes paying.'}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                    <span className="md:col-span-1 bg-emerald-50 text-emerald-800 border border-emerald-200 w-8 h-8 rounded-full flex items-center justify-center font-bold tracking-tight text-center shrink-0">3</span>
-                    <div className="md:col-span-11 leading-normal">
-                      <strong className="text-slate-900 block font-bold mb-0.5">{lang === 'es' ? 'Introduce tus secretos en la plataforma' : 'Save API credentials securely'}</strong>
-                      <p>{lang === 'es' ? 'Extraiga sk_live_ / pk_live_ en su pestaña de API y agréguelos como secretos de entorno como se indica en el menú lateral derecho.' : 'Go to Developers > API Keys in Stripe, copy the secret key, and add them inside the Environment Secrets container on this applet.'}</p>
-                    </div>
-                  </div>
-                </div>
               </div>
 
             </div>
@@ -2295,17 +2278,6 @@ export default function AdminPanel({
                   </div>
 
                   {/* Item 2 */}
-                  <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center gap-2">
-                    <div className="truncate">
-                      <p className="font-extrabold text-slate-350">STRIPE_SECRET_KEY</p>
-                      <p className="text-[8px] text-slate-500 font-sans truncate">sk_live_...</p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${integrationStatus?.stripe?.configured ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
-                      {integrationStatus?.stripe?.configured ? 'SET' : 'MISSING'}
-                    </span>
-                  </div>
-
-                  {/* Item 3 */}
                   <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center gap-2">
                     <div className="truncate">
                       <p className="font-extrabold text-slate-350">SMTP_USER</p>

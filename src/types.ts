@@ -32,7 +32,9 @@ export interface Review {
   comment: string;
   commentEn?: string;
   roomType?: string;
-  origin: 'Spain' | 'UK' | 'Germany' | 'France' | 'Ireland' | 'Sweden' | 'Other';
+  language?: string;
+  source?: string;
+  origin?: 'Spain' | 'UK' | 'Germany' | 'France' | 'Ireland' | 'Sweden' | 'Other';
   verified?: boolean;
 }
 
