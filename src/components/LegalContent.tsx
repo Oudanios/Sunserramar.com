@@ -202,7 +202,7 @@ export function LegalReservasContent({ lang }: LegalProps) {
         <h4 className="font-semibold">Check-in / Check-out</h4>
         <p>Check-in: from 14:00 to 22:00. Check-out: before 11:30. Late check-in must be arranged in advance.</p>
         <h4 className="font-semibold">Cancellation Policy</h4>
-        <p>Free cancellation up to 48 hours before arrival. Cancellations within 48 hours of arrival may incur one night's charge. No-shows will be charged the full reservation amount.</p>
+        <p>All reservations are non-refundable and cannot be cancelled free of charge once confirmed. Inventory is synchronized in real time with external sales channels (Booking, Expedia, Airbnb, and other OTAs), so confirmed rooms are immediately blocked and cannot be removed without penalty.</p>
         <h4 className="font-semibold">Payment</h4>
         <p>Payment is accepted at the property in cash or card. Online booking is processed through Cloudbeds secure platform.</p>
         <h4 className="font-semibold">Rules</h4>
@@ -230,10 +230,10 @@ export function LegalReservasContent({ lang }: LegalProps) {
 
       <h4 className="font-semibold text-slate-800 mt-4">2. POLÍTICA DE CANCELACIÓN</h4>
       <ul className="list-disc pl-5 space-y-1">
-        <li>Cancelación gratuita hasta <strong>48 horas antes</strong> de la fecha de llegada.</li>
-        <li>Cancelaciones con menos de 48 horas de antelación podrán conllevar el cargo de <strong>1 noche de alojamiento</strong>.</li>
-        <li>En caso de no presentación (no-show), se cobrará el importe total de la reserva.</li>
-        <li>Las condiciones específicas pueden variar según la tarifa o canal de reserva utilizado.</li>
+        <li>Todas las reservas son <strong>NO REEMBOLSABLES</strong> una vez confirmadas.</li>
+        <li>No se permite cancelación gratuita ni anulación sin cargos tras la confirmación.</li>
+        <li>Las habitaciones se sincronizan en tiempo real con canales externos (Booking, Expedia, Airbnb y otras OTA), por lo que al confirmarse una reserva el inventario queda bloqueado y no puede retirarse sin penalización.</li>
+        <li>En caso de no presentación (no-show), se cobrará igualmente el importe total de la reserva.</li>
       </ul>
 
       <h4 className="font-semibold text-slate-800 mt-4">3. PAGO</h4>

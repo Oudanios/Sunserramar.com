@@ -2628,12 +2628,12 @@ export default function App() {
                           <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800 space-y-2 text-slate-400 text-[10px]">
                             <p className="flex items-center gap-1.5 font-bold text-white uppercase tracking-wider font-mono">
                               <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                              {lang === 'es' ? 'Política de Cancelación Gratis' : 'Cancellation Policy'}
+                              {lang === 'es' ? 'Política de Reserva No Reembolsable' : 'Non-Refundable Booking Policy'}
                             </p>
                             <p className="leading-relaxed">
                               {lang === 'es'
-                                ? 'Puedes cancelar esta reserva sin cargo alguno hasta 24 horas antes de la llegada en el apartado "Mis Reservas".'
-                                : 'Cancel for free up to 24 hours prior to arrival via "My Bookings" menu. No credit charges.'}
+                                ? 'Una vez confirmada, la reserva no admite cancelación gratuita ni reembolso, ya que la habitación queda bloqueada en nuestros canales externos en tiempo real.'
+                                : 'Once confirmed, the booking does not allow free cancellation or refund because the room is blocked in real time across our external channels.'}
                             </p>
                           </div>
                         </div>

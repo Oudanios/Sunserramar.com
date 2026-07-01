@@ -213,15 +213,15 @@ export default function BookingEmailTemplate({ lang, booking, onClose }: Booking
             <div className="space-y-3.5 bg-sky-50/50 p-4 rounded-xl border border-sky-100 text-[11px] sm:text-xs">
               <span className="font-bold text-sky-850 flex items-center gap-1.5 uppercase font-mono tracking-wider text-[10px]">
                 <ShieldCheck className="h-4 w-4 text-sky-600 shrink-0" />
-                {t('POLÍTICAS DE ESTANCIA FLEXIBLES', 'FLEXIBLE STAY POLICIES')}
+                {t('POLÍTICAS DE RESERVA', 'BOOKING POLICIES')}
               </span>
               
               <ul className="space-y-2 text-slate-600 pl-4 list-disc marker:text-sky-500 text-left">
                 <li>
-                  <span className="font-bold text-slate-800">{t('Cancelación Flexible:', 'Flexible Cancellation:')}</span>{' '}
+                  <span className="font-bold text-slate-800">{t('Cancelación:', 'Cancellation:')}</span>{' '}
                   {t(
-                    `Puedes anular o modificar tu reserva sin ningún cargo hasta el día ${cancelLimit} (48 horas antes de tu llegada).`,
-                    `Feel free to cancel or modify your stay for free up to ${cancelLimit} (48 hours before planned arrival).`
+                    'Reserva no reembolsable. No se permite cancelación gratuita tras la confirmación porque la habitación queda bloqueada en tiempo real en nuestros canales externos.',
+                    'Non-refundable booking. Free cancellation is not available after confirmation because the room is blocked in real time across external channels.'
                   )}
                 </li>
                 <li>

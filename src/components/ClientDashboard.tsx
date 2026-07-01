@@ -106,17 +106,12 @@ export default function ClientDashboard({
   };
 
   const handleCancelStayClick = () => {
-    if (!activeBooking) return;
-    const msg = lang === 'es'
-      ? '¿Estás seguro de que deseas cancelar tu reservación? Esta operación no se puede deshacer.'
-      : 'Are you sure you want to cancel your stay? This operation is permanent and non-reversible.';
-    
-    if (confirm(msg)) {
-      onCancelBooking(activeBooking.id);
-      setActiveBooking(null);
-      setIsEditing(false);
-      showToast(lang === 'es' ? 'La reserva ha sido cancelada correctamente.' : 'Booking successfully cancelled.', 'success');
-    }
+    showToast(
+      lang === 'es'
+        ? 'Reserva no reembolsable: para incidencias, contacte recepción o WhatsApp.'
+        : 'Non-refundable booking: for exceptions, contact reception or WhatsApp.',
+      'error'
+    );
   };
 
   return (
@@ -402,18 +397,18 @@ export default function ClientDashboard({
 
             {/* Cancel policy panel */}
             <div className="bg-red-50/50 border border-red-100 rounded-3xl p-6 space-y-3">
-              <p className="text-[10px] shrink-0 font-bold text-red-700 tracking-wider font-mono uppercase">{lang === 'es' ? 'Anulación de Reserva' : 'Annulling Booking'}</p>
+              <p className="text-[10px] shrink-0 font-bold text-red-700 tracking-wider font-mono uppercase">{lang === 'es' ? 'Política de Cancelación' : 'Cancellation Policy'}</p>
               <p className="text-xs text-slate-505 leading-relaxed text-justify">
                 {lang === 'es'
-                  ? '¿Cambio de planes? Cancela tu reserva de forma gratuita con al menos 48 horas de antelación.'
-                  : 'Faced plan modifications? You have the freedom to annul the stay up to 48 hours in advance.'}
+                  ? 'Las reservas confirmadas son no reembolsables y no admiten cancelación gratuita. La disponibilidad se sincroniza en tiempo real con Booking, Expedia, Airbnb y otros canales.'
+                  : 'Confirmed bookings are non-refundable and do not allow free cancellation. Availability is synchronized in real time with Booking, Expedia, Airbnb, and other channels.'}
               </p>
               <button
                 onClick={handleCancelStayClick}
                 className="w-full inline-flex justify-center items-center gap-1.5 bg-white hover:bg-red-50 border border-red-250 hover:border-red-300 text-red-650 font-bold py-2.5 rounded-xl text-xs transition duration-200 cursor-pointer text-center font-mono tracking-wide"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>{lang === 'es' ? 'ELIMINAR MI ESTANCIA' : 'CANCEL BOOKING'}</span>
+                <span>{lang === 'es' ? 'CONTACTAR RECEPCIÓN' : 'CONTACT RECEPTION'}</span>
               </button>
             </div>
 
