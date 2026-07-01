@@ -2137,7 +2137,7 @@ export default function App() {
                 <h3 className="text-xl font-light text-white font-serif tracking-tight mt-1">
                   {lang === 'es' ? 'Precios oficiales sincronizados' : 'Official synchronized pricing'}
                 </h3>
-                <p className="text-xs text-slate-350 leading-relaxed max-w-xl">
+                <p className="text-xs text-white leading-relaxed max-w-xl">
                   {lang === 'es'
                     ? 'Mostramos tarifas sincronizadas con Cloudbeds. No se aplica descuento automático, solo promociones introducidas por el huésped.'
                     : 'Rates are synced with Cloudbeds. No automatic discount is applied, only promotions entered by the guest.'}
