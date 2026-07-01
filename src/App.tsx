@@ -67,10 +67,11 @@ const BookingEmailTemplate = React.lazy(() => import('./components/BookingEmailT
 
 const normalizeAnnouncementConfig = (value: any): AnnouncementConfig => {
   const allowedStyles: AnnouncementConfig['style'][] = ['alert-yellow', 'alert-blue', 'alert-green', 'alert-red', 'dark'];
+  const normalizePromoCode = (text: string) => text.replace(/DIRECTO|DIRECT/gi, 'POLMARNOR');
   return {
     enabled: value?.enabled === true || value?.enabled === 'true',
-    textEs: typeof value?.textEs === 'string' ? value.textEs : '',
-    textEn: typeof value?.textEn === 'string' ? value.textEn : '',
+    textEs: typeof value?.textEs === 'string' ? normalizePromoCode(value.textEs) : '',
+    textEn: typeof value?.textEn === 'string' ? normalizePromoCode(value.textEn) : '',
     style: allowedStyles.includes(value?.style) ? value.style : 'alert-yellow'
   };
 };
@@ -263,8 +264,8 @@ export default function App() {
   // Dynamic top active banner announcement configs
   const [announcement, setAnnouncement] = useState<AnnouncementConfig>({
     enabled: true,
-    textEs: '🍀 ¡DESCUENTO WEB DIRECTO! Introduce el código \'DIRECTO\' al contactar y disfruta de un 10% de descuento directo.',
-    textEn: '🍀 DIRECT WEB DISCOUNT! Mention \'DIRECT\' and instantly receive a 10% rate reduction during check-out.',
+    textEs: '🍀 ¡DESCUENTO WEB DIRECTO! Introduce el código \'POLMARNOR\' al contactar y disfruta de un 10% de descuento directo.',
+    textEn: '🍀 DIRECT WEB DISCOUNT! Mention \'POLMARNOR\' and instantly receive a 10% rate reduction during check-out.',
     style: 'alert-yellow'
   });
 
@@ -1082,9 +1083,9 @@ export default function App() {
             {lang === 'es' 
               ? announcement.textEs 
               : lang === 'fr'
-                ? '🍀 REMISE DIRECTE SUR LE WEB ! Mentionnez \'DIRECT\' lors de votre réservation et profitez de 10% de réduction immédiate.'
+                ? '🍀 REMISE DIRECTE SUR LE WEB ! Mentionnez \'POLMARNOR\' lors de votre réservation et profitez de 10% de réduction immédiate.'
                 : lang === 'ar'
-                  ? '🍀 خصم مباشر من الموقع! اذكر الكود \'DIRECTO\' واستمتع بخصم فوري بنسبة 10٪.'
+                  ? '🍀 خصم مباشر من الموقع! اذكر الكود \'POLMARNOR\' واستمتع بخصم فوري بنسبة 10٪.'
                   : announcement.textEn}
           </span>
         </div>
@@ -4315,8 +4316,8 @@ export default function App() {
                     </strong>
                     <span className="text-slate-600 block mt-1 leading-relaxed">
                       {lang === 'es' 
-                        ? 'Usa el código "DIRECTO" al completar tu reserva directa en la pestaña "Habitaciones" o menciónalo al escribirnos para disfrutar de tarifa reducida garantizada.' 
-                        : 'Simply write the code "DIRECTO" during reservations on the "Rooms" tab, or write it below to guarantee the best direct deal.'}
+                        ? 'Usa el código "POLMARNOR" al completar tu reserva directa en la pestaña "Habitaciones" o menciónalo al escribirnos para disfrutar de tarifa reducida garantizada.' 
+                        : 'Simply write the code "POLMARNOR" during reservations on the "Rooms" tab, or write it below to guarantee the best direct deal.'}
                     </span>
                   </div>
                 </div>
