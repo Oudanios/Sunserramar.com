@@ -1,6 +1,7 @@
 ﻿import express from "express";
 import path from "path";
 import dns from "dns";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -20,6 +21,67 @@ app.use((_req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   next();
+});
+
+// =========================================================================
+// AUTHENTICATION SYSTEM
+// =========================================================================
+
+// Staff users — credentials never exposed to the client
+const STAFF_USERS = [
+  { username: 'Administrator', password: 'OUDANI@RABI', role: 'admin', displayName: 'Administrador' },
+  { username: 'Reception',     password: 'Serramar1',  role: 'manager', displayName: 'Recepción' },
+];
+
+// In-memory session store (token → session data)
+const ADMIN_SESSIONS = new Map<string, { role: string; username: string; displayName: string; expires: number }>();
+
+// Clean expired sessions every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, session] of ADMIN_SESSIONS.entries()) {
+    if (session.expires < now) ADMIN_SESSIONS.delete(token);
+  }
+}, 3600000);
+
+// Login
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Usuario y contraseña requeridos.' });
+  }
+  const user = STAFF_USERS.find(u => u.username.toLowerCase() === String(username).toLowerCase());
+  if (!user) {
+    return res.status(401).json({ error: 'Credenciales incorrectas.' });
+  }
+  // Timing-safe comparison
+  const inputBuf = Buffer.alloc(64); inputBuf.write(password);
+  const storedBuf = Buffer.alloc(64); storedBuf.write(user.password);
+  if (!crypto.timingSafeEqual(inputBuf, storedBuf)) {
+    return res.status(401).json({ error: 'Credenciales incorrectas.' });
+  }
+  const token = crypto.randomBytes(40).toString('hex');
+  ADMIN_SESSIONS.set(token, { role: user.role, username: user.username, displayName: user.displayName, expires: Date.now() + 86400000 });
+  res.json({ token, role: user.role, displayName: user.displayName, username: user.username });
+});
+
+// Verify token
+app.get('/api/auth/verify', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ valid: false });
+  const session = ADMIN_SESSIONS.get(auth.slice(7));
+  if (!session || session.expires < Date.now()) {
+    ADMIN_SESSIONS.delete(auth.slice(7));
+    return res.status(401).json({ valid: false });
+  }
+  res.json({ valid: true, role: session.role, username: session.username, displayName: session.displayName });
+});
+
+// Logout
+app.post('/api/auth/logout', (req, res) => {
+  const auth = req.headers.authorization;
+  if (auth?.startsWith('Bearer ')) ADMIN_SESSIONS.delete(auth.slice(7));
+  res.json({ success: true });
 });
 
 // Initialize Gemini SDK

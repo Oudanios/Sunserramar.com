@@ -62,6 +62,7 @@ import PremiumWelcomeUpgrade from './components/PremiumWelcomeUpgrade';
 import OfficialPhotoGallery from './components/OfficialPhotoGallery';
 import FaqSection from './components/FaqSection';
 import BookingEmailTemplate from './components/BookingEmailTemplate';
+import { LegalAvisoContent, LegalPrivacidadContent, LegalCookiesContent, LegalReservasContent } from './components/LegalContent';
 
 interface HeroSlide {
   image: string;
@@ -199,6 +200,9 @@ export default function App() {
   // Active navigation section
   const [activeTab, setActiveTab] = useState<'inicio' | 'habitaciones' | 'servicios' | 'situacion' | 'ofertas' | 'opiniones' | 'reservas' | 'panel-admin' | 'panel-cliente' | 'contacto'>('inicio');
 
+  // Legal modal state
+  const [legalModal, setLegalModal] = useState<'aviso' | 'privacidad' | 'cookies' | 'reservas' | null>(null);
+
   // Mobile menu open
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
@@ -291,10 +295,12 @@ export default function App() {
       const path = window.location.pathname;
       const hash = window.location.hash;
       if (
+        path.toLowerCase() === '/admin' ||
         path.toLowerCase() === '/administration' || 
         path.toLowerCase().endsWith('/administration') ||
         hash.toLowerCase() === '#/administration' ||
-        hash.toLowerCase() === '#administration'
+        hash.toLowerCase() === '#administration' ||
+        hash.toLowerCase() === '#admin'
       ) {
         setActiveTab('panel-admin');
       }
@@ -4696,15 +4702,36 @@ export default function App() {
       {/* Footer Legal & copyright info */}
       <footer className="bg-slate-950 text-slate-500 py-6 text-center border-t border-slate-900 text-[10px] space-y-2">
         <div className="flex justify-center gap-6 text-slate-400 flex-wrap">
-          <a href="#" className="hover:text-white transition">{lang === 'es' ? 'Aviso Legal' : 'Legal terms'}</a>
-          <a href="#" className="hover:text-white transition">{lang === 'es' ? 'Política de Privacidad' : 'Privacy policy'}</a>
-          <a href="#" className="hover:text-white transition">{lang === 'es' ? 'Política de Cookies' : 'Cookie setup'}</a>
+          <button onClick={() => setLegalModal('aviso')} className="hover:text-white transition cursor-pointer">{lang === 'es' ? 'Aviso Legal' : 'Legal Notice'}</button>
+          <button onClick={() => setLegalModal('privacidad')} className="hover:text-white transition cursor-pointer">{lang === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}</button>
+          <button onClick={() => setLegalModal('cookies')} className="hover:text-white transition cursor-pointer">{lang === 'es' ? 'Política de Cookies' : 'Cookie Policy'}</button>
+          <button onClick={() => setLegalModal('reservas')} className="hover:text-white transition cursor-pointer">{lang === 'es' ? 'Condiciones de Reserva' : 'Booking Conditions'}</button>
         </div>
-        <p>© {new Date().getFullYear()} Sun Serramar Boutique Hostal. {lang === 'es' ? 'El mejor hostal boutique de Benalmádena al mejor precio online garantizado.' : 'The best boutique hostel value in Benalmádena with direct price guarantee.'}</p>
+        <p>© {new Date().getFullYear()} Sun Serramar Boutique Hostal · C. las Flores, 5 · 29631 Benalmádena, Málaga · CIF/NIF: en proceso de registro. {lang === 'es' ? 'Todos los derechos reservados.' : 'All rights reserved.'}</p>
       </footer>
 
-      {/* Fully Functional Serra AI Concierge Helper */}
-      <AIConcierge lang={lang} />
+      {/* Legal Modal */}
+      {legalModal && (
+        <div className="fixed inset-0 z-[200] bg-black/70 flex items-center justify-center p-4" onClick={() => setLegalModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="font-bold text-slate-900 text-lg">
+                {legalModal === 'aviso' && (lang === 'es' ? 'Aviso Legal' : 'Legal Notice')}
+                {legalModal === 'privacidad' && (lang === 'es' ? 'Política de Privacidad' : 'Privacy Policy')}
+                {legalModal === 'cookies' && (lang === 'es' ? 'Política de Cookies' : 'Cookie Policy')}
+                {legalModal === 'reservas' && (lang === 'es' ? 'Condiciones de Reserva' : 'Booking Conditions')}
+              </h2>
+              <button onClick={() => setLegalModal(null)} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="px-6 py-6 prose prose-sm max-w-none text-slate-700 leading-relaxed space-y-4">
+              {legalModal === 'aviso' && <LegalAvisoContent lang={lang} />}
+              {legalModal === 'privacidad' && <LegalPrivacidadContent lang={lang} />}
+              {legalModal === 'cookies' && <LegalCookiesContent lang={lang} />}
+              {legalModal === 'reservas' && <LegalReservasContent lang={lang} />}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Action Floating Action Button (FAB) */}
       <div className="fixed bottom-[80px] right-4 lg:bottom-8 lg:right-8 z-50 flex flex-col items-end">

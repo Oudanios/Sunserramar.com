@@ -84,8 +84,31 @@ export default function AdminPanel({
 
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'manager' | null>(null);
+  const [displayName, setDisplayName] = useState('');
+
+  // Check existing session on mount
+  useEffect(() => {
+    const token = sessionStorage.getItem('serramar_admin_token');
+    if (token) {
+      fetch('/api/auth/verify', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => {
+          if (data.valid) {
+            setIsAuthenticated(true);
+            setUserRole(data.role as 'admin' | 'manager');
+            setDisplayName(data.displayName || data.username);
+          } else {
+            sessionStorage.removeItem('serramar_admin_token');
+          }
+        })
+        .catch(() => sessionStorage.removeItem('serramar_admin_token'));
+    }
+  }, []);
 
   // Editing forms state
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -284,15 +307,50 @@ export default function AdminPanel({
     showToast(lang === 'es' ? '¡Anuncio guardado correctamente!' : 'Announcement saved successfully!', 'success');
   };
 
-  // Handle Auth with default simple password "admin"
-  const handleLogin = (e: React.FormEvent) => {
+  // Handle Auth — server-side validation
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin' || password === 'admin123' || password === '1234') {
-      setIsAuthenticated(true);
-      setAuthError(null);
-    } else {
-      setAuthError(lang === 'es' ? 'Contraseña incorrecta. Utilice "admin" o "1234" para probar.' : 'Incorrect password. Try "admin" or "1234" for testing.');
+    if (!username.trim() || !password.trim()) {
+      setAuthError(lang === 'es' ? 'Introduzca usuario y contraseña.' : 'Enter username and password.');
+      return;
     }
+    setIsLoggingIn(true);
+    setAuthError(null);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim(), password })
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        sessionStorage.setItem('serramar_admin_token', data.token);
+        setIsAuthenticated(true);
+        setUserRole(data.role as 'admin' | 'manager');
+        setDisplayName(data.displayName || data.username);
+        setAuthError(null);
+        setPassword('');
+      } else {
+        setAuthError(data.error || (lang === 'es' ? 'Credenciales incorrectas.' : 'Invalid credentials.'));
+      }
+    } catch {
+      setAuthError(lang === 'es' ? 'Error de conexión. Inténtelo de nuevo.' : 'Connection error. Please retry.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    const token = sessionStorage.getItem('serramar_admin_token');
+    if (token) {
+      fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+      sessionStorage.removeItem('serramar_admin_token');
+    }
+    setIsAuthenticated(false);
+    setUserRole(null);
+    setDisplayName('');
+    setUsername('');
+    setPassword('');
   };
 
   // Metrics calculators
@@ -422,60 +480,106 @@ export default function AdminPanel({
   // Render Login state first
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto my-12 bg-white rounded-3xl border border-slate-100 shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200">
-        <div className="text-center space-y-2">
-          <div className="inline-flex bg-slate-100 p-3.5 rounded-full text-slate-800 border border-slate-200/60 shadow-inner">
-            <Lock className="h-6 w-6 text-sky-600" />
-          </div>
-          <h2 className="text-3xl font-light tracking-tight text-slate-950 font-serif">
-            {lang === 'es' ? 'Panel de Control del Administrador' : 'Administrator Control Panel'}
-          </h2>
-          <p className="text-xs text-slate-500 leading-relaxed font-medium">
-            {lang === 'es' 
-              ? 'Área reservada para el personal de Hostal Serramar. Ingrese su contraseña de acceso.' 
-              : 'Authorized personnel access only. Please enter your protection passphrase.'}
-          </p>
-        </div>
-
-        {authError && (
-          <div className="bg-red-50 text-red-700 border border-red-100 p-3 rounded-xl text-xs font-semibold text-center select-none animate-shake">
-            {authError}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-mono block">
-              {lang === 'es' ? 'Clave de Administrador' : 'Admin Passphrase'}
-            </label>
-            <input 
-              type="password"
-              placeholder={lang === 'es' ? 'Pruebe "admin" o "1234"' : 'Try "admin" or "1234"'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-50 hover:bg-slate-100/90 focus:bg-white border hover:border-slate-300 border-slate-200 rounded-xl p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition duration-200 font-mono tracking-widest text-center"
-              required
-              autoFocus
-            />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+          {/* Header banner */}
+          <div className="bg-slate-900 px-8 py-8 text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-600/20 via-transparent to-transparent pointer-events-none" />
+            <div className="relative z-10">
+              <div className="inline-flex bg-sky-500/15 p-3 rounded-2xl border border-sky-500/30 mb-4">
+                <ShieldCheck className="h-8 w-8 text-sky-400" />
+              </div>
+              <h1 className="text-2xl font-bold text-white tracking-tight">
+                Sun Serramar
+              </h1>
+              <p className="text-sky-300 text-xs font-semibold tracking-widest uppercase mt-1">
+                Panel de Administración
+              </p>
+            </div>
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-sky-600 hover:bg-sky-700 text-white font-extrabold py-3.5 rounded-xl text-xs tracking-widest uppercase font-mono shadow-md hover:shadow-lg transition cursor-pointer active:scale-95 flex items-center justify-center gap-2"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            <span>{lang === 'es' ? 'INICIAR SESIÓN' : 'LOG IN SECURELY'}</span>
-          </button>
-        </form>
+          {/* Form */}
+          <div className="px-8 py-8 space-y-6">
+            <p className="text-center text-slate-500 text-sm leading-relaxed">
+              {lang === 'es'
+                ? 'Área reservada para el personal autorizado del hostal.'
+                : 'Restricted area for authorized hostal staff only.'}
+            </p>
 
-        <div className="text-center">
-          <button 
-            type="button" 
-            onClick={onClose}
-            className="text-xs font-semibold text-slate-505 hover:text-slate-900 cursor-pointer transition hover:underline"
-          >
-            {lang === 'es' ? 'Volver a Web Pública' : 'Return to Public Guesthouse'}
-          </button>
+            {authError && (
+              <div className="bg-red-50 text-red-700 border border-red-200 p-3.5 rounded-xl text-sm font-semibold text-center flex items-center justify-center gap-2">
+                <X className="h-4 w-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+                  {lang === 'es' ? 'Usuario' : 'Username'}
+                </label>
+                <input
+                  type="text"
+                  placeholder={lang === 'es' ? 'Nombre de usuario' : 'Username'}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-sky-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition font-medium text-slate-800"
+                  required
+                  autoFocus
+                  autoComplete="username"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+                  {lang === 'es' ? 'Contraseña' : 'Password'}
+                </label>
+                <input
+                  type="password"
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-sky-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 transition font-mono tracking-widest text-slate-800"
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoggingIn}
+                className="w-full bg-sky-600 hover:bg-sky-700 disabled:bg-sky-400 text-white font-bold py-3.5 rounded-xl text-sm tracking-wide shadow-md hover:shadow-lg transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+              >
+                {isLoggingIn ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>{lang === 'es' ? 'Verificando...' : 'Verifying...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4" />
+                    <span>{lang === 'es' ? 'Acceder al Panel' : 'Access Panel'}</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-xs font-semibold text-slate-400 hover:text-slate-700 cursor-pointer transition hover:underline"
+              >
+                {lang === 'es' ? '← Volver al sitio web' : '← Return to website'}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 px-8 py-4 border-t border-slate-100 text-center">
+            <p className="text-[10px] text-slate-400 font-mono">
+              www.sunserramar.com · Panel Interno v2.0
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -492,37 +596,47 @@ export default function AdminPanel({
   return (
     <div className="bg-slate-50 text-slate-800 rounded-3xl border border-slate-200/80 shadow-2xl p-6 sm:p-8 space-y-8 animate-in fade-in duration-300">
       
-      {/* Admin Panel Header Banner with live clocks */}
+      {/* Admin Panel Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 relative overflow-hidden shadow-lg">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-sky-500/10 via-transparent to-transparent pointer-events-none" />
         
-        <div className="space-y-1.5 relative z-10">
-          <div className="inline-flex items-center gap-1.5 bg-sky-500/15 text-sky-300 border border-sky-500/20 px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider font-mono">
-            <Sliders className="h-3.5 w-3.5 text-sky-400 rotate-90" />
-            {lang === 'es' ? 'Panel de Control Serramar • Direct Office' : 'Serramar Direct Master Panel'}
+        <div className="space-y-2 relative z-10">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 bg-sky-500/15 text-sky-300 border border-sky-500/20 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider font-mono">
+              <ShieldCheck className="h-3 w-3 text-sky-400" />
+              {lang === 'es' ? 'Panel de Administración' : 'Administration Panel'}
+            </div>
+            {userRole === 'admin' ? (
+              <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider">
+                ★ {lang === 'es' ? 'Administrador' : 'Administrator'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider">
+                ● {lang === 'es' ? 'Recepción' : 'Reception Manager'}
+              </span>
+            )}
           </div>
-          <h2 className="text-3xl sm:text-4xl font-light tracking-tight font-serif text-white">
-            {lang === 'es' ? 'Administración General' : 'Guesthouse Admin'}
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            Sun Serramar Boutique Hostal
           </h2>
           <p className="text-xs text-slate-400 font-medium">
-            {lang === 'es' ? 'Edita habitaciones, gestiona reservas completas y audita los comentarios del sitio.' : 'Change live room configurations, manage client reservations, and edit public feedback.'}
+            {lang === 'es' ? `Bienvenido/a, ${displayName}` : `Welcome, ${displayName}`}
+            {' · '}{lang === 'es' ? 'Panel interno de gestión' : 'Internal management panel'}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 relative z-10 shrink-0">
           <button
-            onClick={() => {
-              setIsAuthenticated(false);
-              setPassword('');
-            }}
-            className="bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold font-mono tracking-wide border border-slate-705 cursor-pointer active:scale-95 transition"
+            onClick={handleLogout}
+            className="bg-slate-800 hover:bg-red-900/60 text-slate-300 hover:text-red-200 px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide border border-slate-700 cursor-pointer active:scale-95 transition flex items-center gap-1.5"
           >
+            <Lock className="h-3.5 w-3.5" />
             {lang === 'es' ? 'Cerrar Sesión' : 'Log Out'}
           </button>
           
           <button
             onClick={onClose}
-            className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold font-mono tracking-wide cursor-pointer active:scale-95 transition shadow-md"
+            className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide cursor-pointer active:scale-95 transition shadow-md"
           >
             {lang === 'es' ? 'Volver a la Web' : 'Back to Website'}
           </button>
@@ -579,14 +693,17 @@ export default function AdminPanel({
         >
           {lang === 'es' ? '🖼️ Gestión de Imágenes' : '🖼️ Images & Media'}
         </button>
-        <button
-          onClick={() => { setAdminTab('integrations'); }}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold tracking-wide transition cursor-pointer shrink-0 ${
-            adminTab === 'integrations' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-650 hover:bg-slate-100'
-          }`}
-        >
-          {lang === 'es' ? '🔌 Servidor y Métodos de Pago' : '🔌 Server & Payments'}
-        </button>
+        {/* Integrations only for admin */}
+        {userRole === 'admin' && (
+          <button
+            onClick={() => { setAdminTab('integrations'); }}
+            className={`px-4 py-2.5 rounded-lg text-xs font-bold tracking-wide transition cursor-pointer shrink-0 ${
+              adminTab === 'integrations' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-650 hover:bg-slate-100'
+            }`}
+          >
+            {lang === 'es' ? '🔌 Servidor y Sistema' : '🔌 Server & System'}
+          </button>
+        )}
       </div>
 
       {/* 2. TAB CONTROLLER LAYOUT */}
