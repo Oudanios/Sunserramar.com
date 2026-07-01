@@ -4735,7 +4735,7 @@ export default function App() {
           <button onClick={() => setLegalModal('cookies')} className="hover:text-white transition cursor-pointer">{lang === 'es' ? 'Política de Cookies' : 'Cookie Policy'}</button>
           <button onClick={() => setLegalModal('reservas')} className="hover:text-white transition cursor-pointer">{lang === 'es' ? 'Condiciones de Reserva' : 'Booking Conditions'}</button>
         </div>
-        <p>© {new Date().getFullYear()} Sun Serramar Boutique Hostal · {websiteSettings.addressShort} · CIF/NIF: en proceso de registro. {lang === 'es' ? 'Todos los derechos reservados.' : 'All rights reserved.'}</p>
+        <p>© {new Date().getFullYear()} Sun Serramar Boutique Hostal · {websiteSettings.addressShort} · CIF/NIF: B21902432. {lang === 'es' ? 'Todos los derechos reservados.' : 'All rights reserved.'}</p>
       </footer>
 
       {/* Legal Modal */}
