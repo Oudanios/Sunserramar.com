@@ -220,7 +220,7 @@ export default function App() {
   }, [slidesToUse.length]);
   
   // Active navigation section
-  const [activeTab, setActiveTab] = useState<'inicio' | 'habitaciones' | 'servicios' | 'situacion' | 'ofertas' | 'opiniones' | 'reservas' | 'panel-admin' | 'panel-cliente' | 'contacto'>('inicio');
+  const [activeTab, setActiveTab] = useState<'inicio' | 'habitaciones' | 'galeria' | 'servicios' | 'situacion' | 'ofertas' | 'opiniones' | 'reservas' | 'panel-admin' | 'panel-cliente' | 'contacto'>('inicio');
 
   // Legal modal state
   const [legalModal, setLegalModal] = useState<'aviso' | 'privacidad' | 'cookies' | 'reservas' | null>(null);
@@ -273,14 +273,8 @@ export default function App() {
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guestsCount, setGuestsCount] = useState(1);
-  const [guestName, setGuestName] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
-  const [specialRequests, setSpecialRequests] = useState('');
-  const [breakfastOption, setBreakfastOption] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [quickPromoCode, setQuickPromoCode] = useState('');
-  const [useSmartRedaction, setUseSmartRedaction] = useState(true);
   const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
   const [bookingSuccessMessage, setBookingSuccessMessage] = useState<string | null>(null);
   const [successViewMode, setSuccessViewMode] = useState<'voucher' | 'email'>('voucher');
@@ -754,41 +748,18 @@ export default function App() {
     };
   };
 
-  // Smart GDPR Redaction helper functions
-  const redactName = (name: string): string => {
-    if (!name) return '';
-    const parts = name.trim().split(/\s+/);
-    return parts.map((part, index) => {
-      if (index === 0) {
-        if (part.length <= 2) return part;
-        return part[0] + '*'.repeat(part.length - 2) + part[part.length - 1];
-      }
-      return part[0] + '.';
-    }).join(' ');
-  };
-
-  const redactEmail = (email: string): string => {
-    if (!email) return '';
-    const [local, domain] = email.split('@');
-    if (!domain) return '***';
-    if (local.length <= 2) {
-      return local[0] + '***@' + domain;
-    }
-    return local[0] + '*'.repeat(local.length - 2) + local[local.length - 1] + '@' + domain;
-  };
-
-  const redactPhone = (phone: string): string => {
-    if (!phone) return '';
-    const p = phone.trim();
-    if (p.length <= 6) return '***';
-    return p.slice(0, 3) + '*'.repeat(p.length - 6) + p.slice(-3);
-  };
-
   // Trigger Booking Submission
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRoomForBooking || !checkIn || !checkOut || !guestName || !guestEmail || !guestPhone) {
-      showToast(lang === 'es' ? 'Por favor rellenar todos los datos obligatorios.' : 'Please fill all mandatory fields.', 'error');
+    if (!selectedRoomForBooking || !checkIn || !checkOut || guestsCount < 1) {
+      showToast(lang === 'es' ? 'Selecciona fechas y número de personas.' : 'Please select dates and number of guests.', 'error');
+      return;
+    }
+
+    const date1 = new Date(checkIn);
+    const date2 = new Date(checkOut);
+    if (isNaN(date1.getTime()) || isNaN(date2.getTime()) || date1 >= date2) {
+      showToast(lang === 'es' ? 'Las fechas de reserva no son válidas.' : 'Invalid booking dates.', 'error');
       return;
     }
 
@@ -796,100 +767,21 @@ export default function App() {
     setBookingSuccessMessage(null);
 
     try {
-      // Call server validation simulation just to verify dates
-      const valRes = await fetch('/api/bookings/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ checkIn, checkOut, type: selectedRoomForBooking.id, guests: guestsCount })
+      const promo = promoCode.trim();
+      const params = new URLSearchParams({
+        currency: 'eur',
+        checkin: checkIn,
+        checkout: checkOut,
+        guests: String(guestsCount),
+        adults: String(guestsCount)
       });
-      const valData = await valRes.json();
-      if (!valRes.ok) {
-        showToast(valData.error || 'Invalid booking dates', 'error');
-        setIsBookingSubmitting(false);
-        return;
+      if (promo) {
+        params.set('promo', promo);
       }
+      const cloudbedsUrl = `https://us2.cloudbeds.com/en/reservation/eh45iO/?${params.toString()}`;
 
-      // Calculation
-      const priceDetails = getCalculatedPrice(selectedRoomForBooking.price);
-      const bookingId = 'BKR-' + Math.floor(100000 + Math.random() * 900000);
-
-      // Determine status & special requests
-      let statusVal: 'confirmed' | 'pending' | 'cancelled' = 'confirmed';
-
-      let specialReqText = specialRequests;
-      if (breakfastOption) {
-        specialReqText += ' (Solicita Ticket Descuento Cafetería)';
-      }
-      if (promoCode.trim()) {
-        specialReqText += ` [Código Promo: ${promoCode.trim().toUpperCase()}]`;
-      }
-      specialReqText += ` [Pago: Cloudbeds PMS Direct Redirect]`;
-
-      // 1. Unredacted Booking for Local Storage (so guest sees full details in dashboard)
-      const localBooking: Booking = {
-        id: bookingId,
-        roomName: getRoomName(selectedRoomForBooking),
-        guestName,
-        guestEmail,
-        guestPhone,
-        checkIn,
-        checkOut,
-        guests: guestsCount,
-        totalPrice: priceDetails.total,
-        status: statusVal,
-        specialRequests: specialReqText
-      };
-
-      // 2. Redacted Booking for local server / Database if smart redaction is active
-      const finalGuestName = useSmartRedaction ? redactName(guestName) : guestName;
-      const finalGuestEmail = useSmartRedaction ? redactEmail(guestEmail) : guestEmail;
-      const finalGuestPhone = useSmartRedaction ? redactPhone(guestPhone) : guestPhone;
-
-      const databaseBooking: Booking = {
-        id: bookingId,
-        roomName: getRoomName(selectedRoomForBooking),
-        guestName: finalGuestName,
-        guestEmail: finalGuestEmail,
-        guestPhone: finalGuestPhone,
-        checkIn,
-        checkOut,
-        guests: guestsCount,
-        totalPrice: priceDetails.total,
-        status: statusVal,
-        specialRequests: specialReqText + (useSmartRedaction ? ' [GDPR Enmascarado Inteligente Activo]' : '')
-      };
-
-      // Handle Cloudbeds Flow (Only supported payment method)
-      // Save to backend database + trigger mail routing simultaneously with databaseBooking
-      await fetch('/api/bookings/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ booking: databaseBooking })
-      });
-
-      // Save locally first so they record it in 'My Bookings'
-      const updated = [localBooking, ...bookings];
-      saveBookingsToStorage(updated);
-
-      const cloudbedsUrl = `https://us2.cloudbeds.com/en/reservation/eh45iO/?currency=eur&checkin=${checkIn}&checkout=${checkOut}&guests=${guestsCount}&promo=${encodeURIComponent(promoCode.trim())}&adults=${guestsCount}`;
-
-      setBookingSuccessMessage(
-        lang === 'es'
-          ? `¡Registro local de reserva completado con éxito! Redirigiendo a nuestro motor oficial seguro de Cloudbeds...`
-          : `Local booking registry completed successfully! Redirecting to our secure, official Cloudbeds engine...`
-      );
-
-      // Clean up fields
-      setGuestName('');
-      setGuestEmail('');
-      setGuestPhone('');
-      setSpecialRequests('');
       setPromoCode('');
-      setBreakfastOption(false);
-
-      setTimeout(() => {
-        window.location.href = cloudbedsUrl;
-      }, 1500);
+      window.location.href = cloudbedsUrl;
       return;
     } catch (err: any) {
       console.error(err);
@@ -1239,6 +1131,16 @@ export default function App() {
               {t('Servicios', 'Services', 'Services', 'الخدمات')}
             </button>
             <button
+              onClick={() => setActiveTab('galeria')}
+              className={`px-3 py-2 text-xs font-bold rounded-lg transition-all relative cursor-pointer ${
+                activeTab === 'galeria'
+                  ? 'bg-sky-50 text-sky-700 shadow-sm border border-sky-100'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80 border border-transparent'
+              }`}
+            >
+              {t('Galería', 'Gallery', 'Galerie', 'المعرض')}
+            </button>
+            <button
               onClick={() => setActiveTab('situacion')}
               className={`px-3 py-2 text-xs font-bold rounded-lg transition-all relative cursor-pointer ${
                 activeTab === 'situacion' 
@@ -1392,6 +1294,14 @@ export default function App() {
             }`}
           >
             {t('Servicios', 'Services', 'Services', 'الخدمات')}
+          </button>
+          <button
+            onClick={() => { setActiveTab('galeria'); setMobileMenuOpen(false); }}
+            className={`w-full text-left px-4 py-2.5 text-sm font-semibold rounded-lg transition-all cursor-pointer ${
+              activeTab === 'galeria' ? 'bg-sky-50 text-sky-700 pl-4 font-bold border-l-4 border-sky-500' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {t('Galería', 'Gallery', 'Galerie', 'المعرض')}
           </button>
           <button
             onClick={() => { setActiveTab('situacion'); setMobileMenuOpen(false); }}
@@ -2272,9 +2182,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Interactive Photo Gallery aligned with Booking.com categories */}
-            <OfficialPhotoGallery lang={lang} />
-
             {/* Direct Booking Drawer Reservation Form */}
             {selectedRoomForBooking && (
               <motion.div 
@@ -2376,7 +2283,7 @@ export default function App() {
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider font-mono">{lang === 'es' ? 'HUÉSPED' : 'GUEST'}</span>
-                                  <span className="font-extrabold text-slate-900 text-sm truncate block">{guestName || 'Valued Guest'}</span>
+                                  <span className="font-extrabold text-slate-900 text-sm truncate block">{lang === 'es' ? 'Huésped Cloudbeds' : 'Cloudbeds Guest'}</span>
                                 </div>
                                 <div>
                                   <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider font-mono">{lang === 'es' ? 'HABITACIÓN' : 'BED/ROOM'}</span>
@@ -2411,11 +2318,8 @@ export default function App() {
                                     <span className="text-[9px] text-emerald-600 font-bold">({lang === 'es' ? 'IVA Inc.' : 'VAT Inc.'})</span>
                                   </div>
                                 </div>
-                                <div className="text-right">
-                                  <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider font-mono">{lang === 'es' ? 'TICKET DESAYUNO' : 'BREAKFAST TICKET'}</span>
-                                  <span className="text-xs font-bold text-slate-800 uppercase">
-                                    {breakfastOption ? (lang === 'es' ? '☕ SOLICITADO' : '☕ REQUESTED') : (lang === 'es' ? '❌ NO' : '❌ NO')}
-                                  </span>
+                                <div className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                                  {lang === 'es' ? 'Checkout seguro' : 'Secure checkout'}
                                 </div>
                               </div>
 
@@ -2438,14 +2342,14 @@ export default function App() {
                                 lang={lang} 
                                 booking={bookings[bookings.length - 1] || {
                                   id: 'SRRMR-9426',
-                                  guestName: guestName || 'Valued Guest',
-                                  guestEmail: guestEmail || 'mail@example.com',
-                                  guestPhone: guestPhone || '+34 600 000 000',
+                                  guestName: lang === 'es' ? 'Huésped Cloudbeds' : 'Cloudbeds Guest',
+                                  guestEmail: 'mail@example.com',
+                                  guestPhone: '+34 600 000 000',
                                   roomName: getRoomName(selectedRoomForBooking),
                                   checkIn: checkIn,
                                   checkOut: checkOut,
                                   totalPrice: bookings[bookings.length - 1]?.totalPrice || 180,
-                                  breakfastOption: breakfastOption,
+                                  breakfastOption: false,
                                   guestsCount: guestsCount,
                                   roomId: selectedRoomForBooking?.id || '1'
                                 }}
@@ -2530,196 +2434,51 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                              {lang === 'es' ? 'Nombre del Huésped Principal *' : 'Lead Guest Name *'}
-                            </label>
-                            <input
-                              type="text"
-                              value={guestName}
-                              onChange={(e) => setGuestName(e.target.value)}
-                              placeholder="e.g. Juan Pérez"
-                              className="w-full bg-slate-800 hover:bg-slate-750 border border-slate-705 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 text-white font-medium"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                              {lang === 'es' ? 'Número de Huéspedes *' : 'Number of Guests *'}
-                            </label>
-                            <select
-                              value={guestsCount}
-                              onChange={(e) => setGuestsCount(Number(e.target.value))}
-                              className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer"
-                            >
-                              {Array.from({ length: selectedRoomForBooking.maxGuests }, (_, i) => i + 1).map((n) => (
-                                <option key={n} value={n}>{n} {n === 1 ? (lang === 'es' ? 'Persona' : 'Guest') : (lang === 'es' ? 'Personas' : 'Guests')}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                              {lang === 'es' ? 'Correo Electrónico *' : 'Email Address *'}
-                            </label>
-                            <input
-                              type="email"
-                              value={guestEmail}
-                              onChange={(e) => setGuestEmail(e.target.value)}
-                              placeholder="e.g. example@hostal.com"
-                              className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 text-white font-medium shadow-inner"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                              {lang === 'es' ? 'Teléfono Móvil (WhatsApp) *' : 'Phone Number (WhatsApp) *'}
-                            </label>
-                            <input
-                              type="tel"
-                              value={guestPhone}
-                              onChange={(e) => setGuestPhone(e.target.value)}
-                              placeholder="e.g. +34 600 000 000"
-                              className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 text-white font-medium shadow-inner"
-                              required
-                            />
-                          </div>
-                        </div>
-
-                        {/* Promo Code & Smart GDPR Redaction Toggle */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                              {lang === 'es' ? 'Código Promocional' : 'Promo Code / Coupon'}
-                            </label>
-                            <input
-                              type="text"
-                              value={promoCode}
-                              onChange={(e) => setPromoCode(e.target.value)}
-                              placeholder="e.g. Welcome18, POLMARNOR"
-                              className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 text-white font-medium placeholder-slate-500 uppercase tracking-wider text-xs"
-                            />
-                            <div className="flex gap-2 mt-1.5 flex-wrap">
-                              <button
-                                type="button"
-                                onClick={() => setPromoCode(promoCode.trim().toUpperCase() === 'WELCOME18' ? '' : 'WELCOME18')}
-                                className={`text-[9px] font-bold px-2 py-1 rounded-lg border transition duration-200 cursor-pointer ${
-                                  promoCode.trim().toUpperCase() === 'WELCOME18'
-                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                    : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
-                                }`}
-                              >
-                                {lang === 'es' ? 'Aplicar -18% (WELCOME18)' : 'Apply -18% (WELCOME18)'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setPromoCode(promoCode.trim().toUpperCase() === 'POLMARNOR' ? '' : 'POLMARNOR')}
-                                className={`text-[9px] font-bold px-2 py-1 rounded-lg border transition duration-200 cursor-pointer ${
-                                  promoCode.trim().toUpperCase() === 'POLMARNOR'
-                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                    : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
-                                }`}
-                              >
-                                {lang === 'es' ? 'Aplicar -10% (POLMARNOR)' : 'Apply -10% (POLMARNOR)'}
-                              </button>
-                            </div>
-                            {promoCode && (
-                              <p className={`text-[9.5px] mt-1 font-extrabold font-mono tracking-wider ${
-                                ['WELCOME18', 'POLMARNOR'].includes(promoCode.trim().toUpperCase())
-                                  ? 'text-emerald-400'
-                                  : 'text-red-400'
-                              }`}>
-                                {promoCode.trim().toUpperCase() === 'WELCOME18'
-                                  ? (lang === 'es' ? '✓ CÓDIGO APLICADO: 18% DESCUENTO' : '✓ CODE APPLIED: 18% DISCOUNT')
-                                  : promoCode.trim().toUpperCase() === 'POLMARNOR'
-                                  ? (lang === 'es' ? '✓ CÓDIGO APLICADO: 10% DESCUENTO' : '✓ CODE APPLIED: 10% DISCOUNT')
-                                  : (lang === 'es' ? '✗ CÓDIGO INVÁLIDO' : '✗ INVALID COUPON')}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex flex-col justify-end">
-                            <label className="flex items-center gap-2.5 cursor-pointer font-bold text-xs text-slate-200 mt-2 sm:mt-0 mb-3.5">
-                              <input
-                                type="checkbox"
-                                checked={useSmartRedaction}
-                                onChange={(e) => setUseSmartRedaction(e.target.checked)}
-                                className="h-4 w-4 bg-slate-900 border-slate-700 accent-sky-500 text-sky-500 rounded cursor-pointer shrink-0"
-                              />
-                              <div className="leading-snug">
-                                <span className="block text-xs font-bold text-slate-200">
-                                  {lang === 'es' ? 'Redacción de Datos RGPD' : 'GDPR Smart Redaction'}
-                                </span>
-                                <span className="block text-[9.5px] font-normal text-slate-400 leading-tight">
-                                  {lang === 'es' ? 'Enmascara datos de contacto en base de datos' : 'Masks contact identifiers in database'}
-                                </span>
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 pt-2 bg-slate-800/40 p-4 rounded-2xl border border-slate-800">
-                          <label className="flex items-center gap-2.5 cursor-pointer font-bold text-xs text-slate-200">
-                            <input
-                              type="checkbox"
-                              checked={breakfastOption}
-                              onChange={(e) => setBreakfastOption(e.target.checked)}
-                              className="h-4 w-4 bg-slate-900 border-slate-700 accent-amber-500 text-amber-500 rounded cursor-pointer"
-                            />
-                            <span>{lang === 'es' ? 'Ticket Descuento para Desayuno en Cafetería Cercana (Gratis)' : 'Breakfast Discount Ticket for Nearby Cafe (Free)'}</span>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                            {lang === 'es' ? 'Número de Huéspedes *' : 'Number of Guests *'}
                           </label>
-                          <p className="text-[10.5px] text-slate-400 pl-6 leading-relaxed">
-                            {lang === 'es'
-                              ? 'Al marcar esta opción, recibirás un ticket virtual para obtener precios especiales en una cafetería colaboradora cercana al hostal.'
-                              : 'Check this to receive a virtual discount ticket for special prices at a partnering cafe near the hostal.'}
-                          </p>
-                        </div>
-
-                        {/* Payment Selection Box */}
-                        <div className="space-y-2 pt-2 text-left">
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-                            {lang === 'es' ? 'Método de Pago Seguro *' : 'Secured Checkout Option *'}
-                          </label>
-                          <div className="grid grid-cols-1 gap-3 text-left">
-                            
-                            {/* Option C: Cloudbeds */}
-                            <label className={`block p-4 rounded-2xl border text-left cursor-pointer transition relative bg-slate-800 border-amber-500 text-white shadow-md ring-2 ring-amber-500/20`}>
-                              <span className="absolute top-1.5 right-2 px-1.5 py-0.5 rounded text-[7px] font-mono tracking-widest font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase animate-pulse">
-                                CLOUDBEDS
-                              </span>
-                              <div className="flex items-start gap-2.5">
-                                <input 
-                                  type="radio" 
-                                  name="payment_choice"
-                                  checked={true}
-                                  readOnly
-                                  className="mt-1 h-3.5 w-3.5 accent-amber-500 rounded-full cursor-pointer shrink-0"
-                                />
-                                <div className="leading-normal">
-                                  <strong className="text-xs font-black block text-slate-100">{lang === 'es' ? 'Reserva en Cloudbeds' : 'Direct Cloudbeds'}</strong>
-                                  <span className="text-[10px] leading-snug block text-slate-450 mt-0.5">
-                                    {lang === 'es' ? 'Completa tu pago con tarifas reducidas en Cloudbeds.' : 'Pre-fill and pay securely on Cloudbeds booking engine.'}
-                                  </span>
-                                </div>
-                              </div>
-                            </label>
-
-                          </div>
+                          <select
+                            value={guestsCount}
+                            onChange={(e) => setGuestsCount(Number(e.target.value))}
+                            className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer"
+                          >
+                            {Array.from({ length: selectedRoomForBooking.maxGuests }, (_, i) => i + 1).map((n) => (
+                              <option key={n} value={n}>{n} {n === 1 ? (lang === 'es' ? 'Persona' : 'Guest') : (lang === 'es' ? 'Personas' : 'Guests')}</option>
+                            ))}
+                          </select>
                         </div>
 
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                            {lang === 'es' ? 'Peticiones Especiales (Opcional)' : 'Special Requests (Optional)'}
+                            {lang === 'es' ? 'Código Promocional (Opcional)' : 'Promo Code (Optional)'}
                           </label>
-                          <textarea
-                            value={specialRequests}
-                            onChange={(e) => setSpecialRequests(e.target.value)}
-                            placeholder={lang === 'es' ? 'Cunas, cama doble separada, check-in tardío...' : 'Late checkout, extra baby crib...'}
-                            rows={2}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 text-white font-medium"
-                          ></textarea>
+                          <input
+                            type="text"
+                            value={promoCode}
+                            onChange={(e) => setPromoCode(e.target.value)}
+                            placeholder="e.g. WELCOME18"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 text-white font-medium placeholder-slate-500 uppercase tracking-wider text-xs"
+                          />
+                          {promoCode && (
+                            <p className={`text-[9.5px] mt-1 font-extrabold font-mono tracking-wider ${
+                              ['WELCOME18', 'POLMARNOR'].includes(promoCode.trim().toUpperCase())
+                                ? 'text-emerald-400'
+                                : 'text-red-400'
+                            }`}>
+                              {promoCode.trim().toUpperCase() === 'WELCOME18'
+                                ? (lang === 'es' ? '✓ CÓDIGO APLICADO: 18% DESCUENTO' : '✓ CODE APPLIED: 18% DISCOUNT')
+                                : promoCode.trim().toUpperCase() === 'POLMARNOR'
+                                ? (lang === 'es' ? '✓ CÓDIGO APLICADO: 10% DESCUENTO' : '✓ CODE APPLIED: 10% DISCOUNT')
+                                : (lang === 'es' ? '✗ CÓDIGO INVÁLIDO' : '✗ INVALID COUPON')}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[11px] text-amber-100 font-semibold leading-relaxed">
+                          {lang === 'es'
+                            ? 'Al pulsar reservar, serás redirigido inmediatamente a Cloudbeds para finalizar la reserva de forma segura.'
+                            : 'When you click reserve, you will be redirected instantly to Cloudbeds to complete your secure booking.'}
                         </div>
 
                         <button
@@ -2784,17 +2543,6 @@ export default function App() {
                             </span>
                           </div>
 
-                          {breakfastOption && (
-                            <div className="flex justify-between text-slate-350">
-                              <span>
-                                {lang === 'es' ? 'Ticket Descuento Desayuno' : 'Breakfast Discount Ticket'}
-                              </span>
-                              <span className="font-bold text-sky-400">
-                                {lang === 'es' ? 'GRATIS' : 'FREE'}
-                              </span>
-                            </div>
-                          )}
-
                           {calc.discount > 0 && (
                             <div className="border-t border-slate-800 pt-3 flex justify-between text-emerald-400 font-bold text-[11px] font-mono uppercase tracking-wider">
                               <span className="flex items-center gap-1.5">
@@ -2841,6 +2589,35 @@ export default function App() {
             )}
 
           </div>
+        )}
+
+        {/* 2B. GALLERY SECTION */}
+        {activeTab === 'galeria' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+            className="max-w-7xl mx-auto px-4 sm:px-8 py-16 sm:py-24"
+          >
+            <div className="mb-8 sm:mb-12 rounded-3xl border border-slate-200/70 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-6 sm:p-10">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/80 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-sky-700 font-mono">
+                {t('Vista Visual', 'Visual Tour', 'Visite Visuelle', 'جولة بصرية')}
+              </div>
+              <h2 className="mt-4 text-3xl sm:text-5xl font-light tracking-tight text-slate-900 font-serif">
+                {t('Galería Oficial del Hostal', 'Official Hostal Gallery', 'Galerie Officielle de l\'Hostal', 'المعرض الرسمي للنزل')}
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm sm:text-base leading-relaxed text-slate-600">
+                {t(
+                  'Explora habitaciones, zonas comunes y detalles reales con una vista moderna y adaptada a móvil, tablet y escritorio.',
+                  'Explore real rooms, common spaces, and details in a modern layout optimized for mobile, tablet, and desktop.',
+                  'Explorez les chambres et espaces communs réels dans une mise en page moderne adaptée à tous les écrans.',
+                  'استكشف الغرف والمناطق المشتركة بصور حقيقية وتصميم حديث متجاوب مع جميع الأجهزة.'
+                )}
+              </p>
+            </div>
+
+            <OfficialPhotoGallery lang={lang} />
+          </motion.div>
         )}
 
         {/* 3. SERVICES SECTION - MODERN PREMIUM HOTEL DESIGN */}

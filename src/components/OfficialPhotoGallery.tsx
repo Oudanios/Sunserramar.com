@@ -223,33 +223,50 @@ export default function OfficialPhotoGallery({ lang }: OfficialPhotoGalleryProps
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-10 space-y-8 shadow-sm border border-slate-100/50" id="galeria-real-serramar">
-      
-      {/* Header Info */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-100 pb-6">
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-1.5 text-sky-600 font-extrabold text-[10px] tracking-widest uppercase font-mono bg-sky-50 px-3 py-1.5 rounded-full border border-sky-100">
+    <div className="rounded-[2rem] border border-slate-200/80 bg-white shadow-xl shadow-slate-200/40 overflow-hidden" id="galeria-real-serramar">
+      <div className="relative p-6 sm:p-10 lg:p-12 bg-[radial-gradient(circle_at_top_right,_rgba(14,165,233,0.16),_transparent_40%),radial-gradient(circle_at_bottom_left,_rgba(20,184,166,0.12),_transparent_45%)]">
+        <div className="space-y-5">
+          <div className="inline-flex items-center gap-1.5 text-sky-700 font-extrabold text-[10px] tracking-widest uppercase font-mono bg-sky-100/80 px-3 py-1.5 rounded-full border border-sky-200">
             <Camera className="h-3.5 w-3.5" />
-            {lang === 'es' ? 'Galería de Fotos Oficial' : 'Official Photo Gallery'}
+            {lang === 'es' ? 'Galería Curada' : 'Curated Gallery'}
           </div>
-          <h3 className="text-3xl sm:text-4xl font-light text-slate-900 tracking-tight leading-none pt-1">
-            {lang === 'es' ? 'Visita Visual Directa' : 'A Look Inside Our Hostal'}
-          </h3>
-          <p className="text-slate-500 text-sm max-w-2xl leading-relaxed">
-            {lang === 'es' 
-              ? 'Organización real de habitaciones de pino, cocina libre para huéspedes y zonas reformadas a tu disposición.' 
-              : 'Authentic photos of our pine-wood bedrooms, common hostal kitchen, laundry amenities, and modern facilities.'}
-          </p>
-        </div>
 
-        {/* Category filters */}
-        <div className="flex flex-wrap gap-2 shrink-0 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+          <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6 border-b border-slate-200/70 pb-6">
+            <div className="space-y-3 max-w-3xl">
+              <h3 className="text-3xl sm:text-5xl font-light text-slate-900 tracking-tight leading-[1.05]">
+                {lang === 'es' ? 'Recorrido Visual Moderno' : 'A Fresh Visual Journey'}
+              </h3>
+              <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+                {lang === 'es'
+                  ? 'Vista previa de habitaciones, baños, zonas comunes y exterior en un diseño limpio y moderno, optimizado para todos los dispositivos.'
+                  : 'Preview rooms, bathrooms, common spaces, and exterior details in a clean modern layout optimized for every device.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
+              <div className="rounded-2xl border border-slate-200 bg-white/90 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-widest font-mono text-slate-500">{lang === 'es' ? 'Fotos' : 'Shots'}</p>
+                <p className="text-xl font-black text-slate-900">{GALLERY_IMAGES.length}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/90 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-widest font-mono text-slate-500">{lang === 'es' ? 'Categorías' : 'Categories'}</p>
+                <p className="text-xl font-black text-slate-900">4</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/90 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-widest font-mono text-slate-500">{lang === 'es' ? 'Vista' : 'View'}</p>
+                <p className="text-xl font-black text-slate-900">HD</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Category filters */}
+          <div className="flex flex-wrap gap-2 shrink-0 bg-white/90 p-1.5 rounded-2xl border border-slate-200">
           <button
             onClick={() => setActiveCategory('all')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeCategory === 'all' 
-                ? 'bg-white text-sky-600 shadow-sm border border-slate-200/50 scale-100' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/50 border border-transparent scale-95'
+                ? 'bg-slate-900 text-white shadow-sm border border-slate-900 scale-100' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent scale-95'
             }`}
           >
             <Layers className="h-4 w-4" />
@@ -260,8 +277,8 @@ export default function OfficialPhotoGallery({ lang }: OfficialPhotoGalleryProps
             onClick={() => setActiveCategory('private')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeCategory === 'private' 
-                ? 'bg-white text-sky-600 shadow-sm border border-slate-200/50 scale-100' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/50 border border-transparent scale-95'
+                ? 'bg-slate-900 text-white shadow-sm border border-slate-900 scale-100' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent scale-95'
             }`}
           >
             <Key className="h-4 w-4" />
@@ -272,8 +289,8 @@ export default function OfficialPhotoGallery({ lang }: OfficialPhotoGalleryProps
             onClick={() => setActiveCategory('shared')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeCategory === 'shared' 
-                ? 'bg-white text-sky-600 shadow-sm border border-slate-200/50 scale-100' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/50 border border-transparent scale-95'
+                ? 'bg-slate-900 text-white shadow-sm border border-slate-900 scale-100' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent scale-95'
             }`}
           >
             <ShowerHead className="h-4 w-4" />
@@ -284,20 +301,33 @@ export default function OfficialPhotoGallery({ lang }: OfficialPhotoGalleryProps
             onClick={() => setActiveCategory('common')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeCategory === 'common' 
-                ? 'bg-white text-sky-600 shadow-sm border border-slate-200/50 scale-100' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/50 border border-transparent scale-95'
+                ? 'bg-slate-900 text-white shadow-sm border border-slate-900 scale-100' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent scale-95'
             }`}
           >
             <Coffee className="h-4 w-4" />
             <span>{lang === 'es' ? 'Zonas' : 'Areas'}</span>
           </button>
+
+          <button
+            onClick={() => setActiveCategory('exterior')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeCategory === 'exterior'
+                ? 'bg-slate-900 text-white shadow-sm border border-slate-900 scale-100'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent scale-95'
+            }`}
+          >
+            <Building className="h-4 w-4" />
+            <span>{lang === 'es' ? 'Exterior' : 'Exterior'}</span>
+          </button>
         </div>
+      </div>
       </div>
 
       {/* Modern Bento Grid of gallery pictures */}
       <motion.div 
         layout
-        className="grid grid-cols-2 md:grid-cols-4 gap-4" 
+        className="p-4 sm:p-6 lg:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-5" 
         id="gallery-container-grid"
       >
         <AnimatePresence mode="popLayout">
@@ -313,8 +343,8 @@ export default function OfficialPhotoGallery({ lang }: OfficialPhotoGalleryProps
                 transition={{ duration: 0.4, delay: i * 0.05 }}
                 key={img.url}
                 onClick={() => openLightbox(img.url)}
-                className={`group relative bg-slate-900 rounded-3xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-500 ${
-                  isFeatured ? 'col-span-2 row-span-2 aspect-[4/3] md:aspect-auto' : 'col-span-1 aspect-square'
+                className={`group relative bg-slate-900 rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl hover:shadow-slate-400/40 transition-all duration-500 border border-slate-200 ${
+                  isFeatured ? 'sm:col-span-2 lg:col-span-3 lg:row-span-2 min-h-[260px] lg:min-h-[360px]' : 'col-span-1 min-h-[220px]'
                 }`}
               >
                 <img 
@@ -327,7 +357,7 @@ export default function OfficialPhotoGallery({ lang }: OfficialPhotoGalleryProps
                 {/* Modern Dark Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
                 
-                <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-6 text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-6 text-white transform translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
                   <div className="absolute top-4 right-4 bg-white/10 hover:bg-white/30 backdrop-blur-md rounded-full p-2.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
                     <Maximize2 className="h-4 w-4 text-white" />
                   </div>
