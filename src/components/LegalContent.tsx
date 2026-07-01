@@ -8,6 +8,7 @@ const DIRECCION = 'C. las Flores, 5, 29631 Benalmádena (Málaga), España';
 const EMAIL = 'contact@sunserramar.com';
 const TEL = '+34 952 44 26 04';
 const WEB = 'www.sunserramar.com';
+const CIF = 'B21902432';
 
 // ─── AVISO LEGAL ──────────────────────────────────────────────────────────────
 export function LegalAvisoContent({ lang }: LegalProps) {
@@ -19,6 +20,7 @@ export function LegalAvisoContent({ lang }: LegalProps) {
         <p>In compliance with Law 34/2002 of 11 July on Information Society Services and Electronic Commerce (LSSI-CE), the following information is provided:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li><strong>Name:</strong> {HOSTAL}</li>
+          <li><strong>CIF/NIF:</strong> {CIF}</li>
           <li><strong>Address:</strong> {DIRECCION}</li>
           <li><strong>Email:</strong> {EMAIL}</li>
           <li><strong>Phone:</strong> {TEL}</li>
@@ -37,6 +39,7 @@ export function LegalAvisoContent({ lang }: LegalProps) {
       <h4 className="font-semibold text-slate-800 mt-4">1. DATOS IDENTIFICATIVOS DEL TITULAR</h4>
       <ul className="list-disc pl-5 space-y-1 text-slate-700">
         <li><strong>Denominación:</strong> {HOSTAL}</li>
+        <li><strong>CIF/NIF:</strong> {CIF}</li>
         <li><strong>Domicilio:</strong> {DIRECCION}</li>
         <li><strong>Correo electrónico:</strong> {EMAIL}</li>
         <li><strong>Teléfono:</strong> {TEL}</li>
@@ -73,6 +76,7 @@ export function LegalPrivacidadContent({ lang }: LegalProps) {
         <p>In accordance with EU Regulation 2016/679 (GDPR) and Spain's Organic Law 3/2018 (LOPDGDD), we inform you of the following:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li><strong>Data Controller:</strong> {HOSTAL}, {DIRECCION}</li>
+          <li><strong>CIF/NIF:</strong> {CIF}</li>
           <li><strong>Contact:</strong> {EMAIL}</li>
           <li><strong>Purpose:</strong> Managing enquiries, reservations and customer communications</li>
           <li><strong>Legal basis:</strong> Contractual performance and legitimate interest</li>
@@ -92,6 +96,7 @@ export function LegalPrivacidadContent({ lang }: LegalProps) {
       <h4 className="font-semibold text-slate-800 mt-4">1. RESPONSABLE DEL TRATAMIENTO</h4>
       <ul className="list-disc pl-5 space-y-1 text-slate-700">
         <li><strong>Responsable:</strong> {HOSTAL}</li>
+        <li><strong>CIF/NIF:</strong> {CIF}</li>
         <li><strong>Domicilio:</strong> {DIRECCION}</li>
         <li><strong>Contacto DPD:</strong> {EMAIL}</li>
       </ul>
@@ -252,7 +257,7 @@ export function LegalReservasContent({ lang }: LegalProps) {
       <h4 className="font-semibold text-slate-800 mt-4">7. HOJAS DE RECLAMACIONES</h4>
       <p>El establecimiento dispone de Hojas Oficiales de Quejas y Reclamaciones de la Junta de Andalucía, a disposición del cliente que las solicite. También puede presentar reclamaciones a través del Sistema Arbitral de Consumo.</p>
 
-      <p className="text-slate-500 mt-6 text-xs">© {YEAR} {HOSTAL} · {DIRECCION} · {EMAIL} · {TEL}. Última actualización: julio {YEAR}.</p>
+      <p className="text-slate-500 mt-6 text-xs">© {YEAR} {HOSTAL} · CIF/NIF: {CIF} · {DIRECCION} · {EMAIL} · {TEL}. Última actualización: julio {YEAR}.</p>
     </div>
   );
 }
