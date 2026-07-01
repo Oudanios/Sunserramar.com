@@ -290,54 +290,129 @@ app.get("/api/integrations/status", async (req, res) => {
 // Cloudbeds live rates
 app.get("/api/cloudbeds/rates", async (req, res) => {
   try {
-    const { checkin, checkout, guests } = req.query;
-    const baseRates: Record<string, number> = {
-      "doble-privado": 58, "triple-privado": 75,
-      "cuadruple-privado": 90, "doble-compartido": 45, "individual-compartido": 32
-    };
-    const roomNames: Record<string, string> = {
-      "doble-privado": "Doble con Bano Privado", "triple-privado": "Triple con Bano Privado",
-      "cuadruple-privado": "Familiar Cuadruple", "doble-compartido": "Doble Economica",
-      "individual-compartido": "Individual Economica"
-    };
+    const { checkin, checkout, guests, promo } = req.query;
 
     let checkInDate = new Date();
     let checkOutDate = new Date();
     checkOutDate.setDate(checkOutDate.getDate() + 1);
+
     if (checkin && typeof checkin === 'string') checkInDate = new Date(checkin);
     if (checkout && typeof checkout === 'string') checkOutDate = new Date(checkout);
-    const nights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / 86400000));
-    const month = checkInDate.getMonth();
-    const dayOfWeek = checkInDate.getDay();
-    const seasonal = month >= 5 && month <= 8 ? 1.25 : (month === 4 || month === 9 ? 1.10 : 1.0);
-    const weekend = (dayOfWeek === 5 || dayOfWeek === 6) ? 1.15 : 1.0;
-    const dateSeed = checkInDate.getDate() + checkInDate.getMonth() * 31;
-    const results: Record<string, any> = {};
 
-    for (const [id, base] of Object.entries(baseRates)) {
-      const price = Math.round(base * seasonal * weekend);
-      const maxRooms = id.includes('compartido') ? 6 : 3;
-      const avail = Math.max(1, maxRooms - (dateSeed % maxRooms));
-      results[id] = {
-        roomId: id, roomName: roomNames[id],
-        pricePerNight: price, originalBasePrice: base,
-        available: avail > 0, availableCount: avail,
-        isLowInventory: avail === 1 || dayOfWeek === 5 || dayOfWeek === 6,
-        nights, totalPrice: price * nights,
-        multiplierApplied: parseFloat((seasonal * weekend).toFixed(2)),
-        bookingUrl: "https://us2.cloudbeds.com/en/reservation/eh45iO",
-        syncTimestamp: new Date().toISOString()
-      };
+    const checkInIso = checkInDate.toISOString().split('T')[0];
+    const checkOutIso = checkOutDate.toISOString().split('T')[0];
+    const guestsCount = guests ? Math.max(1, parseInt(guests as string, 10)) : 2;
+    const nights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / 86400000));
+
+    const form = new URLSearchParams({
+      checkin: checkInIso,
+      checkout: checkOutIso,
+      currency_code: 'EUR',
+      lang: 'en',
+      widget_property: '206261339807872',
+      adults: String(guestsCount)
+    });
+
+    if (promo && typeof promo === 'string' && promo.trim()) {
+      form.set('promo_code', promo.trim());
     }
+
+    const cloudbedsRes = await fetch('https://us2.cloudbeds.com/booking/rooms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Accept': 'application/json'
+      },
+      body: form.toString()
+    });
+
+    if (!cloudbedsRes.ok) {
+      throw new Error(`Cloudbeds status ${cloudbedsRes.status}`);
+    }
+
+    const payload = await cloudbedsRes.json() as {
+      room_types?: Array<any>;
+    };
+
+    if (!payload?.room_types || !Array.isArray(payload.room_types) || payload.room_types.length === 0) {
+      throw new Error('Cloudbeds returned no room types');
+    }
+
+    const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, ' ').trim();
+    const roomTypes = payload.room_types;
+
+    const pickRate = (roomType: any) => {
+      const nightly = Number(roomType?.rate_min ?? roomType?.rate_basic ?? roomType?.rate_max ?? 0);
+      return Math.max(0, Math.round(nightly));
+    };
+
+    const pickByName = (keywords: string[], preferredMaxGuests?: number) => {
+      const scored = roomTypes
+        .map((roomType: any) => {
+          const name = normalize(String(roomType?.room_type_name || roomType?.room_type_title || ''));
+          const maxGuests = Number(roomType?.max_guests || 0);
+          const keywordHits = keywords.reduce((acc, kw) => acc + (name.includes(kw) ? 1 : 0), 0);
+          const guestScore = preferredMaxGuests && maxGuests === preferredMaxGuests ? 2 : 0;
+          return { roomType, score: keywordHits + guestScore };
+        })
+        .filter((entry: any) => entry.score > 0)
+        .sort((a: any, b: any) => b.score - a.score);
+
+      return scored.length > 0 ? scored[0].roomType : null;
+    };
+
+    const matchedPrivateDouble = pickByName(['double', 'private'], 2) || pickByName(['twin', 'private'], 2);
+    const matchedTriple = pickByName(['triple', 'private'], 3) || pickByName(['twin', 'private'], 2) || matchedPrivateDouble;
+    const matchedFamily = pickByName(['family', 'private'], 4) || pickByName(['family'], 4);
+    const matchedSharedDouble = pickByName(['double', 'shared'], 2) || pickByName(['twin', 'shared'], 2);
+    const matchedSharedSingle = pickByName(['single', 'shared'], 1) || pickByName(['twin', 'shared'], 2) || matchedSharedDouble;
+
+    const roomNames: Record<string, string> = {
+      'doble-privado': 'Doble con Bano Privado',
+      'triple-privado': 'Triple con Bano Privado',
+      'cuadruple-privado': 'Familiar Cuadruple',
+      'doble-compartido': 'Doble Economica',
+      'individual-compartido': 'Individual Economica'
+    };
+
+    const toResult = (roomId: string, roomType: any | null) => {
+      const price = roomType ? pickRate(roomType) : 0;
+      const availableCount = roomType ? Number(roomType?.num_available_now ?? roomType?.remaining ?? 0) : 0;
+      return {
+        roomId,
+        roomName: roomNames[roomId],
+        pricePerNight: price,
+        originalBasePrice: price,
+        available: availableCount > 0,
+        availableCount,
+        isLowInventory: availableCount > 0 && availableCount <= 1,
+        nights,
+        totalPrice: price * nights,
+        bookingUrl: 'https://us2.cloudbeds.com/en/reservation/eh45iO',
+        syncTimestamp: new Date().toISOString(),
+        source: 'cloudbeds-live'
+      };
+    };
+
+    const rates = {
+      'doble-privado': toResult('doble-privado', matchedPrivateDouble),
+      'triple-privado': toResult('triple-privado', matchedTriple),
+      'cuadruple-privado': toResult('cuadruple-privado', matchedFamily),
+      'doble-compartido': toResult('doble-compartido', matchedSharedDouble),
+      'individual-compartido': toResult('individual-compartido', matchedSharedSingle)
+    };
+
     res.json({
-      success: true, propertyId: "eh45iO", currency: "EUR",
-      checkIn: checkInDate.toISOString().split('T')[0],
-      checkOut: checkOutDate.toISOString().split('T')[0],
-      guests: guests ? parseInt(guests as string, 10) : 2,
-      rates: results
+      success: true,
+      propertyId: 'eh45iO',
+      currency: 'EUR',
+      checkIn: checkInIso,
+      checkOut: checkOutIso,
+      guests: guestsCount,
+      rates
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: "Failed to fetch rates" });
+    res.status(502).json({ success: false, error: "Cloudbeds live rates unavailable" });
   }
 });
 

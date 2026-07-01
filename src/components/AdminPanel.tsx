@@ -85,6 +85,10 @@ export default function AdminPanel({
   const [testSmtpEmail, setTestSmtpEmail] = useState('contact@sunserramar.com');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testMailFeedback, setTestMailFeedback] = useState<{ success: boolean; msg: string } | null>(null);
+  const [cloudbedsPreviewLoading, setCloudbedsPreviewLoading] = useState(false);
+  const [cloudbedsPreviewError, setCloudbedsPreviewError] = useState<string | null>(null);
+  const [cloudbedsPreviewAt, setCloudbedsPreviewAt] = useState<string>('');
+  const [cloudbedsPreviewRows, setCloudbedsPreviewRows] = useState<Array<{ roomName: string; pricePerNight: number; availableCount: number }>>([]);
 
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -241,6 +245,12 @@ export default function AdminPanel({
     }
   }, [adminTab]);
 
+  useEffect(() => {
+    if (adminTab === 'dashboard' && isAuthenticated) {
+      fetchCloudbedsPreview();
+    }
+  }, [adminTab, isAuthenticated]);
+
   const handleSendTestSmtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSendingTest(true);
@@ -277,6 +287,40 @@ export default function AdminPanel({
       });
     } finally {
       setIsSendingTest(false);
+    }
+  };
+
+  const fetchCloudbedsPreview = async () => {
+    setCloudbedsPreviewLoading(true);
+    setCloudbedsPreviewError(null);
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const nextDay = new Date();
+      nextDay.setDate(nextDay.getDate() + 2);
+      const toIso = (d: Date) => d.toISOString().split('T')[0];
+
+      const res = await fetch(`/api/cloudbeds/rates?checkin=${toIso(tomorrow)}&checkout=${toIso(nextDay)}&guests=2`, {
+        cache: 'no-store'
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data?.success || !data?.rates) {
+        throw new Error(data?.error || 'Cloudbeds preview failed');
+      }
+
+      const rows = Object.values(data.rates as Record<string, any>).map((rate: any) => ({
+        roomName: rate.roomName || 'Room',
+        pricePerNight: Number(rate.pricePerNight || 0),
+        availableCount: Number(rate.availableCount || 0)
+      }));
+
+      setCloudbedsPreviewRows(rows);
+      setCloudbedsPreviewAt(new Date().toLocaleTimeString());
+    } catch (err: any) {
+      setCloudbedsPreviewError(err?.message || 'Cloudbeds unavailable');
+    } finally {
+      setCloudbedsPreviewLoading(false);
     }
   };
 
@@ -837,6 +881,67 @@ export default function AdminPanel({
               </p>
             </div>
 
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-150 p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-150 pb-3">
+                <h3 className="font-extrabold text-sm uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                  <Database className="h-4.5 w-4.5 text-sky-650" />
+                  {lang === 'es' ? 'Monitor de Precios Cloudbeds' : 'Cloudbeds Price Monitor'}
+                </h3>
+                <button
+                  onClick={fetchCloudbedsPreview}
+                  disabled={cloudbedsPreviewLoading}
+                  className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider font-mono transition active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${cloudbedsPreviewLoading ? 'animate-spin' : ''}`} />
+                  {lang === 'es' ? 'Actualizar' : 'Refresh'}
+                </button>
+              </div>
+
+              {cloudbedsPreviewError ? (
+                <p className="text-xs text-red-600 font-semibold bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  {lang === 'es' ? 'No se pudo leer Cloudbeds en este momento.' : 'Could not read Cloudbeds right now.'} {cloudbedsPreviewError}
+                </p>
+              ) : (
+                <>
+                  <p className="text-[11px] text-slate-500">
+                    {lang === 'es'
+                      ? `Tarifas oficiales leídas desde Cloudbeds${cloudbedsPreviewAt ? ` · Última lectura: ${cloudbedsPreviewAt}` : ''}`
+                      : `Official rates read from Cloudbeds${cloudbedsPreviewAt ? ` · Last fetch: ${cloudbedsPreviewAt}` : ''}`}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {cloudbedsPreviewRows.map((row, idx) => (
+                      <div key={`${row.roomName}-${idx}`} className="rounded-xl border border-slate-150 bg-slate-50 px-3 py-2 flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-bold text-slate-800 leading-tight">{row.roomName}</p>
+                          <p className="text-[10px] text-slate-500">{lang === 'es' ? 'Disponibles' : 'Available'}: {row.availableCount}</p>
+                        </div>
+                        <p className="text-lg font-black text-slate-900 font-mono">€{row.pricePerNight}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="bg-gradient-to-br from-slate-900 to-sky-950 rounded-2xl border border-slate-800 p-5 space-y-3 shadow-lg">
+              <h3 className="text-xs font-black uppercase tracking-widest text-sky-300 font-mono">
+                {lang === 'es' ? 'Centro de Control Web' : 'Website Control Center'}
+              </h3>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                {lang === 'es'
+                  ? 'Acceso rápido para editar habitaciones, páginas, multimedia, reservas y sistema desde un solo panel moderno.'
+                  : 'Quick access to edit rooms, pages, media, bookings, and system settings from one modern dashboard.'}
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button onClick={() => setAdminTab('habitaciones')} className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-2 rounded-lg cursor-pointer transition">{lang === 'es' ? 'Habitaciones' : 'Rooms'}</button>
+                <button onClick={() => setAdminTab('settings')} className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-2 rounded-lg cursor-pointer transition">{lang === 'es' ? 'Páginas' : 'Pages'}</button>
+                <button onClick={() => setAdminTab('media')} className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-2 rounded-lg cursor-pointer transition">{lang === 'es' ? 'Media' : 'Media'}</button>
+                <button onClick={() => setAdminTab('reservas')} className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-2 rounded-lg cursor-pointer transition">{lang === 'es' ? 'Reservas' : 'Bookings'}</button>
+              </div>
+            </div>
           </div>
 
           {/* Table summary of recent bookings */}

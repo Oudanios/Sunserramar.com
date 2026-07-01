@@ -445,22 +445,17 @@ export default function App() {
   };
 
   const applyCloudbedsRates = (rates: Record<string, any>) => {
-    const savedRooms = localStorage.getItem('serramar_rooms');
-    const sourceRooms = savedRooms ? JSON.parse(savedRooms) : ROOMS;
-    const updatedRooms = (sourceRooms as Room[]).map(room => {
+    setRoomsList((prevRooms) => prevRooms.map((room) => {
       const synced = rates[room.id];
-      if (synced) {
-        return {
-          ...room,
-          price: synced.pricePerNight,
-          available: synced.available,
-          isLowInventory: synced.isLowInventory,
-          availableCount: synced.availableCount
-        };
-      }
-      return room;
-    });
-    setRoomsList(updatedRooms);
+      if (!synced) return room;
+      return {
+        ...room,
+        price: synced.pricePerNight,
+        available: synced.available,
+        isLowInventory: synced.isLowInventory,
+        availableCount: synced.availableCount
+      };
+    }));
   };
 
   // Synchronize dynamic prices & availability in real-time with Cloudbeds PMS for eh45iO
@@ -471,7 +466,7 @@ export default function App() {
     const promoVal = prm !== undefined ? prm : '';
     const queryKey = `${checkinVal}|${checkoutVal}|${guestsVal}|${promoVal}`;
 
-    // Reuse recent results to avoid repeated network spikes and slow first interactions.
+    // Reuse very recent results only if force is false.
     if (!force && cloudbedsCacheRef.current && cloudbedsCacheRef.current.key === queryKey && Date.now() < cloudbedsCacheRef.current.expiresAt) {
       applyCloudbedsRates(cloudbedsCacheRef.current.rates);
       setCloudbedsSyncStatus('success');
@@ -499,7 +494,7 @@ export default function App() {
         cloudbedsCacheRef.current = {
           key: queryKey,
           rates: data.rates,
-          expiresAt: Date.now() + 90_000
+          expiresAt: Date.now() + 15_000
         };
         setCloudbedsSyncStatus('success');
         setLastSyncTime(new Date().toLocaleTimeString());
@@ -520,9 +515,9 @@ export default function App() {
     }
   };
 
-  // Auto-sync Cloudbeds only when rates are relevant (rooms tab or booking drawer).
+  // Auto-sync Cloudbeds when pricing surfaces are visible (home, rooms, or booking drawer).
   useEffect(() => {
-    const shouldSyncCloudbeds = activeTab === 'habitaciones' || !!selectedRoomForBooking;
+    const shouldSyncCloudbeds = activeTab === 'inicio' || activeTab === 'habitaciones' || !!selectedRoomForBooking;
     if (!shouldSyncCloudbeds) return;
 
     const effectiveIn = checkIn || quickCheckIn || '';
@@ -535,7 +530,7 @@ export default function App() {
     }
     cloudbedsDebounceRef.current = setTimeout(() => {
       syncCloudbedsRates(effectiveIn, effectiveOut, effectiveGuests, effectivePromo);
-    }, 450);
+    }, 200);
 
     return () => {
       if (cloudbedsDebounceRef.current) {
@@ -550,6 +545,22 @@ export default function App() {
       if (cloudbedsAbortRef.current) cloudbedsAbortRef.current.abort();
     };
   }, []);
+
+  // Force a refresh cycle while user is actively looking at prices.
+  useEffect(() => {
+    const shouldSyncCloudbeds = activeTab === 'inicio' || activeTab === 'habitaciones' || !!selectedRoomForBooking;
+    if (!shouldSyncCloudbeds) return;
+
+    const intervalId = setInterval(() => {
+      const effectiveIn = checkIn || quickCheckIn || '';
+      const effectiveOut = checkOut || quickCheckOut || '';
+      const effectiveGuests = checkIn ? guestsCount : (quickGuests || 2);
+      const effectivePromo = checkIn ? promoCode : (quickPromoCode || '');
+      syncCloudbedsRates(effectiveIn, effectiveOut, effectiveGuests, effectivePromo, true);
+    }, 20_000);
+
+    return () => clearInterval(intervalId);
+  }, [activeTab, selectedRoomForBooking, checkIn, checkOut, guestsCount, promoCode, quickCheckIn, quickCheckOut, quickGuests, quickPromoCode]);
 
   // Sync announcements
   const saveAnnouncementToStorage = (updatedAnnouncement: AnnouncementConfig) => {
@@ -674,6 +685,10 @@ export default function App() {
     }
     return true;
   });
+
+  const activeBookingRoom = selectedRoomForBooking
+    ? roomsList.find((room) => room.id === selectedRoomForBooking.id) || selectedRoomForBooking
+    : null;
 
   // Handle room booking calculation
   const getCalculatedPrice = (pricePerNight: number) => {
@@ -2100,7 +2115,7 @@ export default function App() {
                       ? (lang === 'es' ? 'Consultando disponibilidad y precios de hoy...' : 'Fetching live availability and guest rates...')
                       : cloudbedsSyncStatus === 'success'
                       ? (lang === 'es' ? `Precios actualizados al instante para tus fechas (Último sync: ${lastSyncTime})` : `Instant dynamic rates verified for your dates (Last sync: ${lastSyncTime})`)
-                      : (lang === 'es' ? 'Error al conectar con el servidor Cloudbeds. Usando tarifas locales garantizadas.' : 'Could not connect to Cloudbeds server. Displaying guaranteed direct rates.')}
+                      : (lang === 'es' ? 'Error temporal con Cloudbeds. Reintentando para mostrar tarifas oficiales.' : 'Temporary Cloudbeds error. Retrying to show official rates.')}
                   </p>
                 </div>
               </div>
@@ -2152,7 +2167,7 @@ export default function App() {
             )}
 
             {/* Direct Booking Drawer Reservation Form */}
-            {selectedRoomForBooking && (
+            {activeBookingRoom && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -2180,7 +2195,7 @@ export default function App() {
                     </div>
 
                     <h3 className="text-3xl sm:text-4xl font-light tracking-tight font-serif text-slate-100">
-                      {lang === 'es' ? 'Estás reservando' : 'You are booking'}: <span className="text-sky-400 font-medium">{getRoomName(selectedRoomForBooking)}</span>
+                      {lang === 'es' ? 'Estás reservando' : 'You are booking'}: <span className="text-sky-400 font-medium">{getRoomName(activeBookingRoom)}</span>
                     </h3>
 
                     {bookingSuccessMessage ? (
@@ -2256,7 +2271,7 @@ export default function App() {
                                 </div>
                                 <div>
                                   <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider font-mono">{lang === 'es' ? 'HABITACIÓN' : 'BED/ROOM'}</span>
-                                  <span className="font-extrabold text-slate-900 text-sm truncate block">{getRoomName(selectedRoomForBooking)}</span>
+                                  <span className="font-extrabold text-slate-900 text-sm truncate block">{getRoomName(activeBookingRoom)}</span>
                                 </div>
                               </div>
 
@@ -2314,13 +2329,13 @@ export default function App() {
                                   guestName: lang === 'es' ? 'Huésped Cloudbeds' : 'Cloudbeds Guest',
                                   guestEmail: 'mail@example.com',
                                   guestPhone: '+34 600 000 000',
-                                  roomName: getRoomName(selectedRoomForBooking),
+                                  roomName: getRoomName(activeBookingRoom),
                                   checkIn: checkIn,
                                   checkOut: checkOut,
                                   totalPrice: bookings[bookings.length - 1]?.totalPrice || 180,
                                   breakfastOption: false,
                                   guestsCount: guestsCount,
-                                  roomId: selectedRoomForBooking?.id || '1'
+                                  roomId: activeBookingRoom?.id || '1'
                                 }}
                               />
                             </Suspense>
@@ -2412,7 +2427,7 @@ export default function App() {
                             onChange={(e) => setGuestsCount(Number(e.target.value))}
                             className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer"
                           >
-                            {Array.from({ length: selectedRoomForBooking.maxGuests }, (_, i) => i + 1).map((n) => (
+                            {Array.from({ length: activeBookingRoom.maxGuests }, (_, i) => i + 1).map((n) => (
                               <option key={n} value={n}>{n} {n === 1 ? (lang === 'es' ? 'Persona' : 'Guest') : (lang === 'es' ? 'Personas' : 'Guests')}</option>
                             ))}
                           </select>
@@ -2482,7 +2497,7 @@ export default function App() {
                     </h4>
 
                     {(() => {
-                      const calc = getCalculatedPrice(selectedRoomForBooking.price);
+                      const calc = getCalculatedPrice(activeBookingRoom.price);
                       return (
                         <div className="space-y-4 text-xs font-medium">
                           <div className="flex justify-between text-slate-350">
@@ -2490,7 +2505,7 @@ export default function App() {
                               {lang === 'es' ? 'Habitación' : 'Room type'}
                             </span>
                             <span className="font-bold text-white text-right">
-                              {getRoomName(selectedRoomForBooking)}
+                              {getRoomName(activeBookingRoom)}
                             </span>
                           </div>
 
@@ -2499,7 +2514,7 @@ export default function App() {
                               {lang === 'es' ? 'Tarifa Base' : 'Base Rate'}
                             </span>
                             <span className="font-bold text-white">
-                              €{selectedRoomForBooking.price} / {lang === 'es' ? 'noche' : 'night'}
+                              €{activeBookingRoom.price} / {lang === 'es' ? 'noche' : 'night'}
                             </span>
                           </div>
 
