@@ -289,6 +289,8 @@ export default function App() {
   const cloudbedsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cloudbedsAbortRef = useRef<AbortController | null>(null);
   const cloudbedsCacheRef = useRef<{ key: string; expiresAt: number; rates: any } | null>(null);
+  const cloudbedsInFlightRef = useRef(false);
+  const cloudbedsLastQueryKeyRef = useRef('');
 
   // Review Form state
   const [newReviewAuthor, setNewReviewAuthor] = useState('');
@@ -524,7 +526,13 @@ export default function App() {
     // Reuse very recent results only if force is false.
     if (!force && cloudbedsCacheRef.current && cloudbedsCacheRef.current.key === queryKey && Date.now() < cloudbedsCacheRef.current.expiresAt) {
       applyCloudbedsRates(cloudbedsCacheRef.current.rates);
+      setHasLiveCloudbedsRates(true);
       setCloudbedsSyncStatus('success');
+      return;
+    }
+
+    if (cloudbedsInFlightRef.current && cloudbedsLastQueryKeyRef.current === queryKey) {
+      // Do not cancel an identical in-flight request; let it complete and update UI.
       return;
     }
 
@@ -534,6 +542,8 @@ export default function App() {
 
     const controller = new AbortController();
     cloudbedsAbortRef.current = controller;
+    cloudbedsInFlightRef.current = true;
+    cloudbedsLastQueryKeyRef.current = queryKey;
     setCloudbedsSyncStatus('syncing');
 
     try {
@@ -553,7 +563,7 @@ export default function App() {
         cloudbedsCacheRef.current = {
           key: queryKey,
           rates: data.rates,
-          expiresAt: Date.now() + 15_000
+          expiresAt: Date.now() + 300_000
         };
         setHasLiveCloudbedsRates(true);
         setCloudbedsSyncStatus('success');
@@ -569,6 +579,9 @@ export default function App() {
       console.error('[CLOUDBEDS SYNC ERROR] Failed fetching rates, retaining default database rates:', err);
       setCloudbedsSyncStatus('error');
     } finally {
+      if (cloudbedsLastQueryKeyRef.current === queryKey) {
+        cloudbedsInFlightRef.current = false;
+      }
       if (cloudbedsAbortRef.current === controller) {
         cloudbedsAbortRef.current = null;
       }
@@ -633,7 +646,7 @@ export default function App() {
       const effectiveGuests = checkIn ? guestsCount : (quickGuests || 2);
       const effectivePromo = checkIn ? promoCode : (quickPromoCode || '');
       syncCloudbedsRates(effectiveIn, effectiveOut, effectiveGuests, effectivePromo, true);
-    }, 8_000);
+    }, 900_000);
 
     return () => clearInterval(intervalId);
   }, [activeTab, selectedRoomForBooking, checkIn, checkOut, guestsCount, promoCode, quickCheckIn, quickCheckOut, quickGuests, quickPromoCode]);
