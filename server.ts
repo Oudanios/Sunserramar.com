@@ -348,6 +348,36 @@ app.get("/api/cloudbeds/rates", async (req, res) => {
       });
     }
 
+    // Session bootstrap fallback for environments where Cloudbeds requires cookies.
+    if (cloudbedsRes.status === 401 || cloudbedsRes.status === 403) {
+      const bootstrapRes = await fetch(`https://us2.cloudbeds.com/en/reservation/eh45iO/?currency=eur&checkin=${checkInIso}&checkout=${checkOutIso}&guests=${guestsCount}&adults=${guestsCount}`, {
+        headers: {
+          'User-Agent': requestHeaders['User-Agent'],
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        }
+      });
+
+      const bootstrapHeaders = bootstrapRes.headers as any;
+      const setCookies: string[] = typeof bootstrapHeaders.getSetCookie === 'function'
+        ? bootstrapHeaders.getSetCookie()
+        : [];
+      const cookieHeader = setCookies
+        .map((cookie) => cookie.split(';')[0])
+        .filter(Boolean)
+        .join('; ');
+
+      if (cookieHeader) {
+        cloudbedsRes = await fetch('https://us2.cloudbeds.com/booking/rooms', {
+          method: 'POST',
+          headers: {
+            ...requestHeaders,
+            'Cookie': cookieHeader
+          },
+          body: form.toString()
+        });
+      }
+    }
+
     if (!cloudbedsRes.ok) {
       throw new Error(`Cloudbeds status ${cloudbedsRes.status}`);
     }
