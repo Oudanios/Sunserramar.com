@@ -2,7 +2,6 @@
 import path from "path";
 import dns from "dns";
 import crypto from "crypto";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
@@ -689,6 +688,7 @@ app.get("/health", (_req, res) => res.json({ status: "ok", service: "sunserramar
 // Static + Vite
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
   } else {
